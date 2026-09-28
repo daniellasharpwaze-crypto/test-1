@@ -136,7 +136,7 @@ export default function Home() {
   const plans = [
     {
       name: "Starter",
-      price: "1,299",
+      price: "200",
       period: "one-time",
       desc: "Perfect for freelancers and solo SMM consultants.",
       features: [
@@ -151,7 +151,7 @@ export default function Home() {
     },
     {
       name: "Growth",
-      price: "2,999",
+      price: "400",
       period: "one-time",
       desc: "Ideal for SMM agencies scaling their client base.",
       badge: "Most Popular",
@@ -169,7 +169,7 @@ export default function Home() {
     },
     {
       name: "Agency",
-      price: "5,999",
+      price: "600",
       period: "one-time",
       desc: "Enterprise-grade solution for full-service SMM agencies.",
       features: [
