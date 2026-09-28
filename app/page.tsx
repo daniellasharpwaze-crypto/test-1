@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 
 /* ========== ICON COMPONENTS ========== */
 function IconInstagram() {
@@ -94,6 +94,60 @@ function Counter({ end, suffix }: { end: number; suffix: string }) {
       {count}
       {suffix}
     </span>
+  );
+}
+
+/* ========== SCROLL REVEAL ========== */
+function ScrollReveal({
+  children,
+  delay = 0,
+  direction = "up",
+  blur = true,
+}: {
+  children: ReactNode;
+  delay?: number;
+  direction?: "up" | "down" | "left" | "right";
+  blur?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  const getTranslate = useCallback(() => {
+    switch (direction) {
+      case "up": return "translateY(60px)";
+      case "down": return "translateY(-60px)";
+      case "left": return "translateX(60px)";
+      case "right": return "translateX(-60px)";
+    }
+  }, [direction]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translate(0, 0)" : getTranslate(),
+        filter: blur ? (isVisible ? "blur(0px)" : "blur(8px)") : undefined,
+        transition: `opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, filter 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
+        willChange: "opacity, transform, filter",
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -290,6 +344,7 @@ export default function Home() {
       </nav>
 
       {/* ========== HERO ========== */}
+      <ScrollReveal delay={0.1}>
       <section style={{ padding: "80px 2rem 60px", maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "center" }}>
           <div style={{ animation: "fadeInUp 0.8s ease forwards" }}>
@@ -452,8 +507,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </ScrollReveal>
 
       {/* ========== STATS BAR ========== */}
+      <ScrollReveal delay={0.15} blur={true}>
       <section style={{ padding: "40px 2rem", maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{
           display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
@@ -480,8 +537,10 @@ export default function Home() {
           ))}
         </div>
       </section>
+      </ScrollReveal>
 
       {/* ========== SERVICES ========== */}
+      <ScrollReveal delay={0.1}>
       <section id="services" style={{ padding: "80px 2rem", maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "60px" }}>
           <div style={{
@@ -590,8 +649,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </ScrollReveal>
 
       {/* ========== ABOUT / PROCESS ========== */}
+      <ScrollReveal delay={0.1}>
       <section id="about" style={{ padding: "80px 2rem", maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "60px" }}>
           <div style={{
@@ -650,8 +711,10 @@ export default function Home() {
           ))}
         </div>
       </section>
+      </ScrollReveal>
 
       {/* ========== PRICING ========== */}
+      <ScrollReveal delay={0.1}>
       <section id="pricing" style={{ padding: "80px 2rem", maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "60px" }}>
           <div style={{
@@ -751,8 +814,10 @@ export default function Home() {
           ))}
         </div>
       </section>
+      </ScrollReveal>
 
       {/* ========== TESTIMONIALS ========== */}
+      <ScrollReveal delay={0.1}>
       <section id="testimonials" style={{ padding: "80px 2rem", maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "60px" }}>
           <div style={{
@@ -810,8 +875,10 @@ export default function Home() {
           ))}
         </div>
       </section>
+      </ScrollReveal>
 
       {/* ========== CTA ========== */}
+      <ScrollReveal delay={0.15} direction="up">
       <section style={{ padding: "60px 2rem 100px", maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{
           background: "#e0e5ec",
@@ -877,8 +944,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </ScrollReveal>
 
       {/* ========== FOOTER ========== */}
+      <ScrollReveal delay={0.2} blur={false}>
       <footer style={{
         borderTop: "1px solid rgba(163, 177, 198, 0.4)",
         padding: "32px 2rem",
@@ -909,6 +978,7 @@ export default function Home() {
           ))}
         </div>
       </footer>
+      </ScrollReveal>
 
       {/* Keyframe styles injected inline for Next.js compatibility */}
       <style>{`
