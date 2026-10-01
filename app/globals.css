@@ -116,3 +116,209 @@ body {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ========== MOBILE HAMBURGER ========== */
+.mobile-menu-open .mobile-nav-links {
+  display: flex !important;
+}
+
+/* ========== RESPONSIVE MEDIA QUERIES ========== */
+@media (max-width: 768px) {
+  /* Navbar */
+  .nav-links-desktop {
+    display: none !important;
+  }
+  .nav-cta-desktop {
+    display: none !important;
+  }
+  .nav-mobile-btn {
+    display: flex !important;
+  }
+
+  /* Mobile menu overlay */
+  .mobile-nav-links {
+    display: none;
+    position: fixed;
+    top: 74px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(224, 229, 236, 0.98);
+    backdrop-filter: blur(20px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 99;
+    padding: 40px 24px;
+  }
+
+  /* Hero: single column */
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+  .hero-card {
+    display: none !important;
+  }
+  .hero-h1 {
+    font-size: 2rem !important;
+    letter-spacing: -0.5px !important;
+  }
+  .hero-actions {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  .hero-actions a {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 14px 20px !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Stats bar */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px !important;
+    padding: 24px 20px !important;
+  }
+
+  /* Modules grid */
+  .modules-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* About section */
+  .about-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+  .about-inner-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .about-section-padding {
+    padding: 32px 24px !important;
+  }
+
+  /* Registration form */
+  .form-container {
+    padding: 28px 20px !important;
+    border-radius: 24px !important;
+  }
+  .form-header-flex {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Safety section */
+  .safety-grid {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+  .safety-padding {
+    padding: 28px 20px !important;
+  }
+
+  /* Testimonials */
+  .testimonials-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* CTA */
+  .cta-padding {
+    padding: 40px 24px !important;
+  }
+  .cta-h2 {
+    font-size: 1.8rem !important;
+  }
+  .cta-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .cta-actions a {
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  /* Legal Modal */
+  .legal-modal-tabs {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    padding: 10px 16px 0 !important;
+  }
+  .legal-modal-tabs button {
+    font-size: 0.78rem !important;
+    padding: 8px 10px !important;
+  }
+  .legal-modal-header {
+    padding: 18px 20px 14px !important;
+  }
+  .legal-modal-body {
+    padding: 18px 20px !important;
+  }
+  .legal-modal-footer {
+    padding: 14px 20px !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .legal-modal-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Section paddings */
+  .section-px {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Registration section heading */
+  .reg-h2 {
+    font-size: 1.8rem !important;
+  }
+
+  /* Step wizard */
+  .step-indicator {
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* Form submit btn */
+  .submit-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Footer */
+  .footer-inner {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+  .footer-links {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-h1 {
+    font-size: 1.65rem !important;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .role-popup-trigger {
+    font-size: 0.88rem !important;
+  }
+}
