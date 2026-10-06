@@ -1674,13 +1674,12 @@ export default function Home() {
                       >
                         <IconCopy /> {copiedPass ? "Copied!" : "Copy Clearance ID"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleSendGrades}
-                        style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#10b981" }}
+                      <a
+                        href="/faculty/grades"
+                        style={{ ...minBtnStyle, textDecoration: "none", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#10b981" }}
                       >
                         <IconSparkles size={16} /> Send Grades
-                      </button>
+                      </a>
                       <button
                         type="button"
                         onClick={resetF}
