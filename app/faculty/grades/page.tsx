@@ -52,6 +52,7 @@ export default function FacultyGradesPage() {
 
   const handleSendGrades = () => {
     setSubmitted(true);
+    localStorage.setItem("grades_sent", "true");
     setTimeout(() => {
       setSubmitted(false);
       setGrades({});

@@ -333,6 +333,27 @@ export default function Home() {
     tab: "privacy"
   });
 
+  /* Listen for Grades Sent from Faculty Page */
+  useEffect(() => {
+    const checkGrades = () => {
+      if (localStorage.getItem("grades_sent") === "true") {
+        setGradeSentPopup(true);
+        setTimeout(() => setGradeSentPopup(false), 5000);
+        localStorage.removeItem("grades_sent");
+      }
+    };
+    
+    checkGrades(); // check on mount if navigating back
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "grades_sent" && e.newValue === "true") {
+        checkGrades();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   /* Prevent background scroll when modal open */
   useEffect(() => {
     document.body.style.overflow = (rolePopupOpen || mobileOpen || legal.open) ? "hidden" : "";
@@ -1985,11 +2006,11 @@ export default function Home() {
           position: "fixed",
           bottom: "24px",
           right: "24px",
-          background: "#10b981",
+          background: "#3b82f6",
           color: "white",
           padding: "16px 24px",
           borderRadius: "16px",
-          boxShadow: "0 10px 25px rgba(16,185,129,0.4)",
+          boxShadow: "0 10px 25px rgba(59,130,246,0.4)",
           display: "flex",
           alignItems: "center",
           gap: "12px",
@@ -1997,10 +2018,10 @@ export default function Home() {
           animation: "slideIn 0.3s ease-out"
         }}>
           <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "50%", padding: "4px" }}>
-            <IconCheck size={20} />
+            <IconGraduationCap size={20} />
           </div>
           <div style={{ fontWeight: "700", fontSize: "0.95rem", fontFamily: "'Outfit',sans-serif" }}>
-            Grades have been sent successfully!
+            New grades have been posted to your portal!
           </div>
         </div>
       )}
