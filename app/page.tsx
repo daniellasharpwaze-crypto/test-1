@@ -283,6 +283,7 @@ export default function Home() {
   const [copiedPass, setCopiedPass] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
   const [gradeSentPopup, setGradeSentPopup] = useState(false);
+  const [enrolledCount, setEnrolledCount] = useState(15400);
 
   /* Multi-Step States */
   const [sStep, setSStep] = useState(1);
@@ -352,6 +353,14 @@ export default function Home() {
     };
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  /* Load dynamic counts */
+  useEffect(() => {
+    const savedCount = localStorage.getItem("enrolled_count");
+    if (savedCount) {
+      setEnrolledCount(parseInt(savedCount, 10));
+    }
   }, []);
 
   /* Prevent background scroll when modal open */
@@ -444,6 +453,12 @@ export default function Home() {
         issuedAt: new Date().toLocaleString()
       });
       setSStep(5);
+      
+      setEnrolledCount(prev => {
+        const newVal = prev + 1;
+        localStorage.setItem("enrolled_count", newVal.toString());
+        return newVal;
+      });
     }, 1000);
   };
 
@@ -1064,7 +1079,7 @@ export default function Home() {
       <ScrollReveal delay={0.1}>
         <section style={{ padding: "10px 1rem 32px", maxWidth: "1200px", margin: "0 auto" }}>
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", background: "#e0e5ec", borderRadius: "20px", boxShadow: "8px 8px 18px #a3b1c6, -8px -8px 18px #ffffff", padding: "18px 14px", textAlign: "center" }}>
-            {[{ end: 15400, suffix: "+", label: "Enrolled Students", sub: "Active accounts", color: "#3b82f6" }, { end: 640, suffix: "+", label: "Verified Faculty", sub: "Teachers & Principals", color: "#10b981" }, { end: 48, suffix: "", label: "Active Classrooms", sub: "Synchronized", color: "#8b5cf6" }, { end: 100, suffix: "%", label: "Goal Conversion", sub: "Instant digital pass", color: "#f59e0b" }].map(s => (
+            {[{ end: enrolledCount, suffix: "+", label: "Enrolled Students", sub: "Active accounts", color: "#3b82f6" }, { end: 640, suffix: "+", label: "Verified Faculty", sub: "Teachers & Principals", color: "#10b981" }, { end: 48, suffix: "", label: "Active Classrooms", sub: "Synchronized", color: "#8b5cf6" }, { end: 100, suffix: "%", label: "Goal Conversion", sub: "Instant digital pass", color: "#f59e0b" }].map(s => (
               <div key={s.label}>
                 <div style={{ fontSize: "1.75rem", fontWeight: "800", color: s.color, lineHeight: "1.1" }}>
                   <Counter end={s.end} suffix={s.suffix} />
