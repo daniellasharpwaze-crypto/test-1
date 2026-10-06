@@ -282,6 +282,7 @@ export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [copiedPass, setCopiedPass] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
+  const [gradeSentPopup, setGradeSentPopup] = useState(false);
 
   /* Multi-Step States */
   const [sStep, setSStep] = useState(1);
@@ -574,6 +575,11 @@ export default function Home() {
     setTimeout(() => setCopiedPass(false), 2000);
   };
 
+  const handleSendGrades = () => {
+    setGradeSentPopup(true);
+    setTimeout(() => setGradeSentPopup(false), 3000);
+  };
+
   /* Theming */
   const isStudent = activeTab === "student";
   const accentColor = isStudent ? "#3b82f6" : "#8b5cf6";
@@ -682,7 +688,7 @@ export default function Home() {
 
           {/* Desktop Nav Links */}
           <div className="nav-links-desktop" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            {[{ label: "Modules", href: "#modules" }, { label: "Campus Safety", href: "#safety" }, { label: "Testimonials", href: "#testimonials" }].map(n => (
+            {[{ label: "Modules", href: "/#modules" }, { label: "Campus Safety", href: "/#safety" }, { label: "Testimonials", href: "/#testimonials" }, { label: "Feedback", href: "/feedback" }].map(n => (
               <a key={n.label} href={n.href} style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "#475569", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#e0e5ec"; (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
@@ -1670,6 +1676,13 @@ export default function Home() {
                       </button>
                       <button
                         type="button"
+                        onClick={handleSendGrades}
+                        style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#10b981" }}
+                      >
+                        <IconSparkles size={16} /> Send Grades
+                      </button>
+                      <button
+                        type="button"
                         onClick={resetF}
                         style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}
                       >
@@ -1963,6 +1976,32 @@ export default function Home() {
                 ✓ Accept School Policy
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grade Sent Popup Notification */}
+      {gradeSentPopup && (
+        <div style={{
+          position: "fixed",
+          bottom: "24px",
+          right: "24px",
+          background: "#10b981",
+          color: "white",
+          padding: "16px 24px",
+          borderRadius: "16px",
+          boxShadow: "0 10px 25px rgba(16,185,129,0.4)",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          zIndex: 9999,
+          animation: "slideIn 0.3s ease-out"
+        }}>
+          <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "50%", padding: "4px" }}>
+            <IconCheck size={20} />
+          </div>
+          <div style={{ fontWeight: "700", fontSize: "0.95rem", fontFamily: "'Outfit',sans-serif" }}>
+            Grades have been sent successfully!
           </div>
         </div>
       )}
