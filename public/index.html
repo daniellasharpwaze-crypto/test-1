@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduSphere — Unified Academic & Campus Safety Network</title>
+  <meta name="description" content="Unified Academic Access for Students and Administrators. Digital pass issuance, interactive academic modules, campus child safety, and administrator feedback management.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #e0e5ec;
+      --shadow-light: #ffffff;
+      --shadow-dark: #a3b1c6;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      --accent-student: #3b82f6;
+      --accent-admin: #8b5cf6;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --font: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --theme-color: #3b82f6;
+      --theme-grad: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: var(--font);
+      color: var(--text-main);
+      overflow-x: hidden;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* Neomorphic utility shadows */
+    .neo-flat {
+      background: var(--bg);
+      box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+    }
+    .neo-flat-sm {
+      background: var(--bg);
+      box-shadow: 3px 3px 7px var(--shadow-dark), -3px -3px 7px var(--shadow-light);
+    }
+    .neo-pressed {
+      background: var(--bg);
+      box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    }
+    .neo-pressed-deep {
+      background: var(--bg);
+      box-shadow: inset 4px 4px 10px var(--shadow-dark), inset -4px -4px 10px var(--shadow-light);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-family: var(--font);
+      font-weight: 700;
+      font-size: 0.88rem;
+      border: none;
+      cursor: pointer;
+      border-radius: 30px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      user-select: none;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .btn-flat {
+      background: var(--bg);
+      color: var(--text-sub);
+      box-shadow: 3px 3px 7px var(--shadow-dark), -3px -3px 7px var(--shadow-light);
+    }
+    .btn-flat:hover {
+      color: var(--text-main);
+    }
+    .btn-theme {
+      background: var(--theme-grad);
+      color: #ffffff;
+      box-shadow: 4px 4px 12px rgba(59, 130, 246, 0.35), -2px -2px 6px rgba(255, 255, 255, 0.8);
+    }
+    .btn-theme.admin-mode {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      box-shadow: 4px 4px 12px rgba(139, 92, 246, 0.35), -2px -2px 6px rgba(255, 255, 255, 0.8);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      box-shadow: 4px 4px 12px rgba(16, 185, 129, 0.35);
+    }
+
+    /* Input controls */
+    .input-field {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(163, 177, 198, 0.25);
+      background: var(--bg);
+      box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
+      font-family: var(--font);
+      font-size: 0.92rem;
+      color: var(--text-main);
+      outline: none;
+      transition: border 0.2s ease;
+    }
+    .input-field:focus {
+      border-color: var(--theme-color);
+    }
+    .input-field.error {
+      border-color: var(--accent-red);
+    }
+
+    /* Sticky Navbar */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(224, 229, 236, 0.94);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 2px 14px rgba(163, 177, 198, 0.35);
+      padding: 0 1rem;
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.4px;
+    }
+    .nav-brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--theme-grad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+      transition: background 0.3s;
+    }
+    .nav-links {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .nav-link {
+      padding: 8px 14px;
+      border-radius: 18px;
+      text-decoration: none;
+      color: var(--text-sub);
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--text-main);
+      background: var(--bg);
+      box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+    }
+    .badge-lock {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 700;
+      background: rgba(139, 92, 246, 0.15);
+      color: var(--accent-admin);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    .section-wrap {
+      padding: 40px 0;
+    }
+
+    /* Role Banner */
+    .role-indicator-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      border-radius: 30px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+    }
+    .role-indicator-badge.student {
+      color: var(--accent-student);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+    }
+    .role-indicator-badge.admin {
+      color: var(--accent-admin);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+    }
+
+    /* Grid Layouts */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 36px;
+      align-items: center;
+      padding: 40px 0 20px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+    }
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    .safety-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.show {
+      display: flex;
+    }
+    .modal-box {
+      background: var(--bg);
+      border-radius: 24px;
+      box-shadow: 16px 16px 36px rgba(0, 0, 0, 0.25), -10px -10px 24px rgba(255, 255, 255, 0.8);
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    /* Role Choice Cards */
+    .role-card-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 18px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      text-align: left;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+      font-family: var(--font);
+    }
+    .role-card-btn.active-student {
+      border-color: var(--accent-student);
+      box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light), 0 0 14px rgba(59, 130, 246, 0.2);
+    }
+    .role-card-btn.active-admin {
+      border-color: var(--accent-admin);
+      box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light), 0 0 14px rgba(139, 92, 246, 0.2);
+    }
+
+    /* Tab Switcher in Feedback section */
+    .feedback-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(163, 177, 198, 0.3);
+      padding-bottom: 8px;
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+      font-weight: 700;
+      font-size: 0.82rem;
+      background: transparent;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--bg);
+      color: var(--text-main);
+      box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+    }
+
+    /* Feedback Item Card */
+    .fb-card {
+      background: var(--bg);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 4px 4px 10px var(--shadow-dark), -4px -4px 10px var(--shadow-light);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.2s;
+    }
+    .fb-card:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Mobile Hamburger */
+    .nav-toggle-btn {
+      display: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: var(--bg);
+      box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+      align-items: center;
+      justify-content: center;
+      color: var(--text-sub);
+    }
+
+    /* Toast notification */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 22px;
+      border-radius: 16px;
+      background: #10b981;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 9999;
+    }
+    #toast.show {
+      display: flex;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .safety-grid {
+        grid-template-columns: 1fr;
+      }
+      .testimonials-grid {
+        grid-template-columns: 1fr;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+        position: fixed;
+        top: 64px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(224, 229, 236, 0.98);
+        backdrop-filter: blur(16px);
+        flex-direction: column;
+        padding: 30px 20px;
+        gap: 14px;
+      }
+      .nav-links.open {
+        display: flex;
+      }
+      .nav-toggle-btn {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-container">
+      
+      <!-- Brand -->
+      <a href="#home" class="nav-brand">
+        <div class="nav-brand-icon" id="brandIcon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+            <path d="M6 12v5c3 3 9 3 12 0v-5" />
+          </svg>
+        </div>
+        <span>Edu<span id="brandAccent" style="color: var(--accent-student)">Sphere</span></span>
+      </a>
+
+      <!-- Navigation Links (Student + Admin: Modules, Safety, Testimonials; Feedback: ADMIN ONLY) -->
+      <div class="nav-links" id="navLinks">
+        <!-- Always available for Students & Admin -->
+        <a href="#modules" class="nav-link">Modules</a>
+        <a href="#safety" class="nav-link">Campus Safety</a>
+        <a href="#testimonials" class="nav-link">Testimonials</a>
+
+        <!-- FEEDBACK: STRICTLY FOR ADMIN ONLY -->
+        <a href="#feedback" class="nav-link" id="navFeedbackLink">
+          Feedback
+          <span class="badge-lock" id="feedbackNavBadge">Admin Only</span>
+        </a>
+
+        <a href="#registration" class="nav-link">Registration</a>
+      </div>
+
+      <!-- Right Action & Role Toggle Button -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button type="button" class="btn btn-theme" id="roleTriggerBtn" onclick="openRoleModal()" style="padding: 8px 16px; font-size: 0.84rem;">
+          <span id="roleBtnIcon">🎓</span>
+          <span id="roleBtnText">Student Portal</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <button type="button" class="nav-toggle-btn" onclick="toggleMobileNav()" aria-label="Toggle menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <line x1="4" y1="6" x2="20" y2="6"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="18" x2="20" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- ===== HERO SECTION ===== -->
+  <header id="home" class="container">
+    <div class="hero-grid">
+      
+      <div>
+        <div class="role-indicator-badge student" id="heroRoleBadge">
+          <span id="heroRoleIcon">●</span> <span id="heroRoleText">Student Access Active</span>
+        </div>
+
+        <h1 style="font-size: 2.6rem; font-weight: 800; line-height: 1.15; letter-spacing: -1px; margin: 16px 0 14px; color: #1e293b;">
+          Unified Academic Access for <span id="heroHighlight" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Students, Teachers & Admins</span>.
+        </h1>
+
+        <p style="font-size: 0.96rem; color: var(--text-sub); line-height: 1.7; margin-bottom: 24px; max-width: 520px;">
+          Issue verified digital admission passes, access course modules, inspect campus child safety, and manage confidential feedback with FERPA compliance.
+        </p>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+          <button type="button" class="btn btn-theme" onclick="openRoleModal()" style="padding: 12px 24px;">
+            ⚡ Choose Role / Switch Portal
+          </button>
+          <a href="#modules" class="btn btn-flat" style="padding: 12px 20px;">
+            Explore Modules ↓
+          </a>
+        </div>
+
+        <div style="display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700; color: var(--text-sub);">
+            <span style="color: var(--accent-green);">✓</span> 100% FERPA Protected
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700; color: var(--text-sub);">
+            <span style="color: var(--accent-student);">✓</span> Instant Digital Pass Issuance
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700; color: var(--text-sub);">
+            <span style="color: var(--accent-admin);">✓</span> Role-Based Security Matrix
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Campus Telemetry Card -->
+      <div class="neo-flat" style="border-radius: 24px; padding: 26px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green);"></div>
+            <span style="font-size: 0.76rem; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px;">CAMPUS NETWORK: LIVE</span>
+          </div>
+          <span class="neo-pressed" style="font-size: 0.7rem; font-weight: 700; color: var(--theme-color); padding: 3px 10px; border-radius: 12px;">AY 2026-2027</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div class="neo-pressed" style="padding: 14px; border-radius: 14px;">
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent-student); margin-bottom: 4px;">ATTENDANCE</div>
+            <div style="font-size: 1.35rem; font-weight: 800;">98.4%</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted);">RFID gate verified</div>
+          </div>
+          <div class="neo-pressed" style="padding: 14px; border-radius: 14px;">
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent-admin); margin-bottom: 4px;">CLASSROOMS</div>
+            <div style="font-size: 1.35rem; font-weight: 800;">48 / 48</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted);">Synchronized live</div>
+          </div>
+        </div>
+
+        <div class="neo-pressed" style="border-radius: 16px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.76rem; font-weight: 800;">Role Permissions Check</span>
+            <span id="rolePermissionLabel" style="font-size: 0.72rem; font-weight: 800; color: var(--accent-student);">Student Tier</span>
+          </div>
+          <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.4;">
+            <span style="color: var(--accent-green); font-weight: 700;">✓ Modules, Safety, Testimonials:</span> Public to all users.<br>
+            <span style="color: var(--accent-admin); font-weight: 700;">🔒 Feedback Portal:</span> Restricted exclusively to <strong>Admin</strong>.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ===== STATS COUNTER BAR ===== -->
+  <section class="container" style="margin-top: 10px;">
+    <div class="neo-flat stats-grid">
+      <div>
+        <div style="font-size: 1.85rem; font-weight: 800; color: var(--accent-student); line-height: 1.1;" id="statStudents">0</div>
+        <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Enrolled Students</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted);">Registered account</div>
+      </div>
+      <div>
+        <div style="font-size: 1.85rem; font-weight: 800; color: var(--accent-green); line-height: 1.1;">640+</div>
+        <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Verified Faculty & Admins</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted);">Clearance verified</div>
+      </div>
+      <div>
+        <div style="font-size: 1.85rem; font-weight: 800; color: var(--accent-admin); line-height: 1.1;">48</div>
+        <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Digital Classrooms</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted);">Syllabus repository</div>
+      </div>
+      <div>
+        <div style="font-size: 1.85rem; font-weight: 800; color: var(--accent-amber); line-height: 1.1;">100%</div>
+        <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Goal Conversion</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted);">Instant credential export</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MULTI-STEP PASS REGISTRATION ===== -->
+  <section id="registration" class="container section-wrap">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div class="neo-pressed" style="display: inline-block; padding: 4px 14px; border-radius: 30px; font-size: 0.72rem; font-weight: 800; color: var(--theme-color); text-transform: uppercase; margin-bottom: 8px;">
+        Registration Hub
+      </div>
+      <h2 style="font-size: 2rem; font-weight: 800; letter-spacing: -0.6px; margin-bottom: 6px;">
+        Issue Your Verified Campus Pass
+      </h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); max-width: 480px; margin: 0 auto 16px;">
+        Choose your role track below to convert your profile into an official digital pass.
+      </p>
+
+      <button type="button" class="btn btn-theme" onclick="openRoleModal()" style="padding: 9px 20px;">
+        <span id="formRoleBadge">Active Mode: Student Registration</span> [Switch]
+      </button>
+    </div>
+
+    <div class="neo-flat" style="border-radius: 24px; padding: 30px; max-width: 780px; margin: 0 auto;">
+      
+      <!-- Progress Bar -->
+      <div class="neo-pressed" style="border-radius: 14px; padding: 14px 18px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 0.8rem; font-weight: 700;" id="wizardGoalTitle">Goal: Official Student Digital Pass</span>
+          <span style="font-size: 0.76rem; font-weight: 800; color: var(--theme-color);" id="wizardProgressPct">Step 1 of 4 (25%)</span>
+        </div>
+        <div style="height: 7px; border-radius: 4px; background: #d1d9e6; overflow: hidden;">
+          <div id="progressBar" style="height: 100%; width: 25%; background: var(--theme-grad); border-radius: 4px; transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Registration Form Container -->
+      <form id="passForm" onsubmit="event.preventDefault(); handleFormSubmit();">
+
+        <!-- STUDENT FIELDS -->
+        <div id="studentTrack">
+          <!-- Student Login Box (Appears when Log In button is pressed) -->
+          <div id="studentLoginBox" class="step-pane" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800;">Registered Student Login</h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted);">Sign in with your Student ID / LRN or Email to retrieve your pass</p>
+              </div>
+              <button type="button" class="btn btn-flat" onclick="fillStudentDemoLogin()" style="padding: 6px 14px; font-size: 0.78rem; color: var(--accent-student);">
+                ⚡ Demo Fill
+              </button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Student ID / LRN or Email *</label>
+                <input type="text" id="login_identifier" class="input-field" placeholder="e.g. LRN-2026-48910 or student@edusphere.edu">
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Password *</label>
+                <input type="password" id="login_password" class="input-field" placeholder="Enter your student password">
+              </div>
+
+              <div id="loginErrMsg" style="display: none; padding: 10px 14px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #ef4444; font-size: 0.8rem; font-weight: 600;"></div>
+            </div>
+
+            <!-- Action buttons: Register button located at the SAME PLACE (bottom left) as the Log In button! -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
+              <button type="button" class="btn btn-flat" onclick="toggleStudentAuth('register')">Register</button>
+              <button type="button" class="btn btn-theme" onclick="handleStudentLogin()">Sign In to Portal →</button>
+            </div>
+          </div>
+
+          <!-- Step 1: Identification -->
+          <div id="step-s1" class="step-pane">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800;">Student Identification</h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted);">Enter LRN and enrolled academic strand</p>
+              </div>
+              <button type="button" class="btn btn-flat" onclick="fillStudentDemo()" style="padding: 6px 14px; font-size: 0.78rem;">
+                ⚡ Auto Demo
+              </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+              <div style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Full Legal Name *</label>
+                <input type="text" id="s_fullName" class="input-field" placeholder="e.g. Janelle Marie Gomez" required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Student ID / LRN *</label>
+                <input type="text" id="s_id" class="input-field" placeholder="e.g. LRN-2026-48910" required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Institutional Email *</label>
+                <input type="email" id="s_email" class="input-field" placeholder="student@edusphere.edu" required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Grade Level</label>
+                <select id="s_grade" class="input-field">
+                  <option>Grade 11 - Senior High</option>
+                  <option>Grade 12 - Senior High</option>
+                  <option>Grade 10 - Junior High</option>
+                  <option>Undergraduate - 1st Year</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Academic Strand</label>
+                <select id="s_strand" class="input-field">
+                  <option>STEM (Science, Tech, Eng & Math)</option>
+                  <option>ABM (Accountancy & Business)</option>
+                  <option>HUMSS (Humanities & Social Sci)</option>
+                  <option>TVL / ICT & Computer Science</option>
+                </select>
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Section / Advisory Room</label>
+                <input type="text" id="s_section" class="input-field" placeholder="e.g. Archimedes / St. Jude / Section 1">
+              </div>
+            </div>
+
+            <!-- Action buttons: Log In button at bottom left below Section / Advisory Room; Next on the right -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
+              <button type="button" class="btn btn-flat" onclick="toggleStudentAuth('login')">Log In</button>
+              <button type="button" class="btn btn-theme" onclick="goToStep(2)">Next: Guardian Contact →</button>
+            </div>
+          </div>
+
+          <!-- Step 2: Guardian -->
+          <div id="step-s2" class="step-pane" style="display: none;">
+            <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 4px;">Parent & Emergency Contact</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px;">Child safety notifications & gate check-ins</p>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 14px;">
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Guardian Full Name *</label>
+                <input type="text" id="s_guardianName" class="input-field" placeholder="e.g. Maria Corazon Gomez (Mother)" required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Emergency Mobile Number *</label>
+                <input type="tel" id="s_guardianPhone" class="input-field" placeholder="e.g. +63 (917) 845-2901" required>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+              <button type="button" class="btn btn-flat" onclick="goToStep(1)">← Back</button>
+              <button type="button" class="btn btn-theme" onclick="goToStep(3)">Next: Extracurriculars →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Clubs -->
+          <div id="step-s3" class="step-pane" style="display: none;">
+            <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 4px;">Co-Curricular Clubs</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px;">Select clubs printed on your admission pass</p>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <label class="btn btn-flat" style="cursor: pointer; font-size: 0.8rem; padding: 8px 14px;">
+                <input type="checkbox" name="s_clubs" value="Robotics & AI" style="margin-right: 6px;"> Robotics & AI Club
+              </label>
+              <label class="btn btn-flat" style="cursor: pointer; font-size: 0.8rem; padding: 8px 14px;">
+                <input type="checkbox" name="s_clubs" value="Debate Society" style="margin-right: 6px;"> Debate Society
+              </label>
+              <label class="btn btn-flat" style="cursor: pointer; font-size: 0.8rem; padding: 8px 14px;">
+                <input type="checkbox" name="s_clubs" value="Mathematics Guild" style="margin-right: 6px;"> Mathematics Guild
+              </label>
+              <label class="btn btn-flat" style="cursor: pointer; font-size: 0.8rem; padding: 8px 14px;">
+                <input type="checkbox" name="s_clubs" value="Campus Journalism" style="margin-right: 6px;"> Campus Journalism
+              </label>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+              <button type="button" class="btn btn-flat" onclick="goToStep(2)">← Back</button>
+              <button type="button" class="btn btn-theme" onclick="goToStep(4)">Next: Security & Finish →</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Security -->
+          <div id="step-s4" class="step-pane" style="display: none;">
+            <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 4px;">Security & Honor Code</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px;">Create your password and acknowledge school policies</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Portal Password *</label>
+                <input type="password" id="s_pwd" class="input-field" placeholder="Min 6 characters" required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Confirm Password *</label>
+                <input type="password" id="s_pwd2" class="input-field" placeholder="Re-enter password" required>
+              </div>
+            </div>
+
+            <div class="neo-pressed" style="padding: 12px; border-radius: 12px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.8rem;">
+                <input type="checkbox" id="s_terms" required>
+                <span>I pledge adherence to the Student Code of Conduct and FERPA Privacy Standard.</span>
+              </label>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+              <button type="button" class="btn btn-flat" onclick="goToStep(3)">← Back</button>
+              <button type="submit" class="btn btn-success" style="padding: 12px 24px;">Issue Digital Student Pass 🎓</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN / FACULTY FIELDS -->
+        <div id="adminTrack" style="display: none;">
+          <!-- Admin Login Box (Appears when Log In button is pressed) -->
+          <div id="adminLoginBox" class="step-pane" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800;">Registered Admin / Faculty Login</h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted);">Sign in with your Employee ID or Email to retrieve clearance</p>
+              </div>
+              <button type="button" class="btn btn-flat" onclick="fillAdminDemoLogin()" style="padding: 6px 14px; font-size: 0.78rem; color: var(--accent-admin);">
+                ⚡ Demo Fill
+              </button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Faculty / Employee ID or Email *</label>
+                <input type="text" id="admin_login_identifier" class="input-field" placeholder="e.g. FAC-ADM-2026-004 or admin@edusphere.edu">
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Password *</label>
+                <input type="password" id="admin_login_password" class="input-field" placeholder="Enter your administrative password">
+              </div>
+
+              <div id="adminLoginErrMsg" style="display: none; padding: 10px 14px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #ef4444; font-size: 0.8rem; font-weight: 600;"></div>
+            </div>
+
+            <!-- Action buttons: Register button located at bottom left; Sign In on right -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
+              <button type="button" class="btn btn-flat" onclick="toggleAdminAuth('register')">Register</button>
+              <button type="button" class="btn btn-theme admin-mode" onclick="handleAdminLogin()">Sign In to Portal →</button>
+            </div>
+          </div>
+
+          <!-- Admin Step 1: Profile -->
+          <div id="step-a1" class="step-pane">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800;">Administrator Clearance</h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted);">Verify executive campus credentials</p>
+              </div>
+              <button type="button" class="btn btn-flat" onclick="fillAdminDemo()" style="padding: 6px 14px; font-size: 0.78rem; color: var(--accent-admin);">
+                ⚡ Auto Demo
+              </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+              <div style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Administrator / Faculty Name *</label>
+                <input type="text" id="a_fullName" class="input-field" placeholder="e.g. Dr. Jorge Escober, Ph.D." required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Executive Role *</label>
+                <select id="a_role" class="input-field">
+                  <option>Principal / Head of School</option>
+                  <option>Vice Principal / Academic Dean</option>
+                  <option>Faculty Instructor</option>
+                  <option>Campus Safety Director</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Employee / Faculty ID *</label>
+                <input type="text" id="a_id" class="input-field" placeholder="e.g. FAC-ADM-2026-004" required>
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Institution Name *</label>
+                <input type="text" id="a_inst" class="input-field" placeholder="e.g. Metropolitan Academic Science Institute" required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Official Email *</label>
+                <input type="email" id="a_email" class="input-field" placeholder="admin@edusphere.edu" required>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Executive Office</label>
+                <input type="text" id="a_office" class="input-field" placeholder="Executive Admin Wing, Rm 101">
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;">Password *</label>
+                <input type="password" id="a_password" class="input-field" placeholder="Min. 6 characters" required>
+              </div>
+            </div>
+
+            <div class="neo-pressed" style="padding: 12px; border-radius: 12px; margin-top: 14px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.8rem;">
+                <input type="checkbox" id="a_terms" required>
+                <span>I pledge full compliance with Educator Ethics and Student Feedback Privacy safeguards.</span>
+              </label>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
+              <button type="button" class="btn btn-flat" onclick="toggleAdminAuth('login')">Log In</button>
+              <button type="submit" class="btn btn-theme admin-mode" style="padding: 12px 24px;">Issue Tier-1 Admin Clearance 🛡️</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Success Result Display (Matches Exact Verified Student Pass Card Layout) -->
+        <div id="passResult" style="display: none; text-align: center; padding: 10px 0;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: #10b981; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; margin: 0 auto 14px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);">✓</div>
+          
+          <div style="display: inline-block; padding: 4px 14px; border-radius: 20px; background: rgba(16, 185, 129, 0.15); color: #059669; font-weight: 800; font-size: 0.72rem; margin-bottom: 10px; letter-spacing: 0.5px;">
+            100% GOAL CONVERTED • PASS VERIFIED
+          </div>
+
+          <h2 style="font-size: 1.7rem; font-weight: 800; color: #1e293b; margin-bottom: 6px;" id="resultTitle">
+            Welcome, Janelle Marie Gomez! 🎓
+          </h2>
+          <p style="font-size: 0.88rem; color: var(--text-muted); max-width: 460px; margin: 0 auto 24px; line-height: 1.6;" id="resultSubtitle">
+            Your digital admission pass is verified. Show this ID to your adviser or gate terminal.
+          </p>
+
+          <!-- 3 Detail Cards as shown in user screenshot -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;" id="resultCards">
+            <div class="neo-pressed" style="padding: 14px; border-radius: 14px; text-align: left;">
+              <div style="font-size: 0.68rem; font-weight: 800; color: var(--accent-student); text-transform: uppercase; margin-bottom: 4px;">PASS NUMBER</div>
+              <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);" id="cardPassNum">STU-PASS-401428</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;" id="cardLrn">LRN: LRN-2026-48910</div>
+            </div>
+            <div class="neo-pressed" style="padding: 14px; border-radius: 14px; text-align: left;">
+              <div style="font-size: 0.68rem; font-weight: 800; color: var(--accent-green); text-transform: uppercase; margin-bottom: 4px;">CLASS PLACEMENT</div>
+              <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);" id="cardPlacement">Grade 11 - Senior High</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;" id="cardSection">Archimedes - Room 204</div>
+            </div>
+            <div class="neo-pressed" style="padding: 14px; border-radius: 14px; text-align: left;">
+              <div style="font-size: 0.68rem; font-weight: 800; color: var(--accent-admin); text-transform: uppercase; margin-bottom: 4px;">SAFETY ROSTER</div>
+              <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);" id="cardGuardian">Corazon Gomez (Mother)</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;" id="cardPhone">+63 (917) 845-2901</div>
+            </div>
+          </div>
+
+          <!-- Buttons matching user screenshot -->
+          <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-success" onclick="downloadPassText()" style="padding: 10px 22px;">
+              📄 Download Pass (.txt)
+            </button>
+            <button type="button" class="btn btn-flat" onclick="copyPassId()" style="padding: 10px 20px;" id="copyBtn">
+              📋 Copy Pass ID
+            </button>
+            <button type="button" class="btn btn-flat" onclick="handleUnifiedSignOut()" style="padding: 10px 20px;">
+              🔄 Reset
+            </button>
+          </div>
+        </div>
+
+      </form>
+
+    </div>
+  </section>
+
+  <!-- ===== ACADEMIC MODULES (AVAILABLE FOR STUDENTS AND ADMIN) ===== -->
+  <section id="modules" class="container section-wrap">
+    <div style="text-align: center; margin-bottom: 30px;">
+      <div class="neo-pressed" style="display: inline-block; padding: 4px 14px; border-radius: 30px; font-size: 0.72rem; font-weight: 800; color: var(--accent-student); text-transform: uppercase; margin-bottom: 8px;">
+        Core Learning Hub • Students & Admin
+      </div>
+      <h2 style="font-size: 2rem; font-weight: 800; letter-spacing: -0.6px; margin-bottom: 6px;">
+        Engineered for Modern Classrooms
+      </h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); max-width: 480px; margin: 0 auto;">
+        Interactive curriculum modules and analytics available to both Students and School Administrators.
+      </p>
+    </div>
+
+    <div class="modules-grid">
+      
+      <!-- Module 1 -->
+      <div class="neo-flat" style="border-radius: 20px; padding: 22px;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(59, 130, 246, 0.15); color: var(--accent-student); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 14px;">
+          📖
+        </div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Digital Classrooms</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
+          Centralized lesson repository, homework dropbox submission, and interactive lecture syllabus.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem; font-weight: 600; color: var(--text-sub);">
+          <div>✓ 24/7 Syllabus Download Access</div>
+          <div>✓ Assignment Submission Dropbox</div>
+          <div>✓ Class Discussions & Q&A Board</div>
+        </div>
+      </div>
+
+      <!-- Module 2 -->
+      <div class="neo-flat" style="border-radius: 20px; padding: 22px;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); color: var(--accent-green); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 14px;">
+          📊
+        </div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Gradebook & Telemetry</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
+          Automated GPA computation, transparent term grade reports, and parent communication sync.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem; font-weight: 600; color: var(--text-sub);">
+          <div>✓ Quarterly Grade Telemetry</div>
+          <div>✓ Class Rank & GPA Analytics</div>
+          <div>✓ Attendance Logs Synchronization</div>
+        </div>
+      </div>
+
+      <!-- Module 3 -->
+      <div class="neo-flat" style="border-radius: 20px; padding: 22px;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(139, 92, 246, 0.15); color: var(--accent-admin); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 14px;">
+          🛡️
+        </div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Campus Child Safety</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
+          RFID gate check-in alerts, digital clinic passes, and confidential counselor reporting.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem; font-weight: 600; color: var(--text-sub);">
+          <div>✓ Parent Gate SMS Alerts</div>
+          <div>✓ Anti-Bullying Confidential Channel</div>
+          <div>✓ Nurse Clinic Digital Pass</div>
+        </div>
+      </div>
+
+      <!-- Module 4 -->
+      <div class="neo-flat" style="border-radius: 20px; padding: 22px;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 14px;">
+          🏛️
+        </div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Executive Governance</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
+          Administrative toolset for principals and subject heads to audit curricula and manage schedules.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem; font-weight: 600; color: var(--text-sub);">
+          <div>✓ Faculty Timetable Matrix</div>
+          <div>✓ DepEd / Accreditation Compliance</div>
+          <div>✓ Official Campus E-Forms</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== CAMPUS SAFETY (AVAILABLE FOR STUDENTS AND ADMIN) ===== -->
+  <section id="safety" class="container section-wrap">
+    <div class="neo-flat" style="border-radius: 24px; padding: 32px 28px;">
+      <div class="safety-grid">
+        <div>
+          <div class="neo-pressed" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; color: var(--accent-admin); text-transform: uppercase; margin-bottom: 12px;">
+            🛡️ Child Protection & Safe Haven
+          </div>
+          <h2 style="font-size: 1.85rem; font-weight: 800; margin-bottom: 12px; line-height: 1.2;">
+            Zero-Harassment, Secure Learning Environment
+          </h2>
+          <p style="font-size: 0.9rem; color: var(--text-sub); line-height: 1.7; margin-bottom: 20px;">
+            EduSphere guarantees rigorous safety enforcement: gate telemetry alerts guardians on arrival, while encrypted channels allow students to discreetly report bullying directly to counselors.
+          </p>
+
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-success" onclick="openLegalModal('safety')" style="padding: 10px 20px;">Child Protection Charter</button>
+            <button type="button" class="btn btn-flat" onclick="openLegalModal('privacy')" style="padding: 10px 18px;">FERPA Privacy Policy</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="neo-pressed" style="padding: 14px 16px; border-radius: 16px; display: flex; gap: 12px; align-items: center;">
+            <div style="font-size: 1.5rem;">🔒</div>
+            <div>
+              <div style="font-size: 0.9rem; font-weight: 800;">Anonymous Counselor Channel</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Confidential incident reporting audited by school guidance counselors.</div>
+            </div>
+          </div>
+
+          <div class="neo-pressed" style="padding: 14px 16px; border-radius: 16px; display: flex; gap: 12px; align-items: center;">
+            <div style="font-size: 1.5rem;">📱</div>
+            <div>
+              <div style="font-size: 0.9rem; font-weight: 800;">Parent Gate Telemetry</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Instant SMS confirmation upon scanning passes at entrance turnstiles.</div>
+            </div>
+          </div>
+
+          <div class="neo-pressed" style="padding: 14px 16px; border-radius: 16px; display: flex; gap: 12px; align-items: center;">
+            <div style="font-size: 1.5rem;">🏥</div>
+            <div>
+              <div style="font-size: 0.9rem; font-weight: 800;">School Clinic Digital Pass</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Emergency allergy profile and medical triage authorizations.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TESTIMONIALS (AVAILABLE FOR STUDENTS AND ADMIN) ===== -->
+  <section id="testimonials" class="container section-wrap">
+    <div style="text-align: center; margin-bottom: 30px;">
+      <div class="neo-pressed" style="display: inline-block; padding: 4px 14px; border-radius: 30px; font-size: 0.72rem; font-weight: 800; color: var(--accent-green); text-transform: uppercase; margin-bottom: 8px;">
+        Community Voices • Students & Admin
+      </div>
+      <h2 style="font-size: 2rem; font-weight: 800; letter-spacing: -0.6px; margin-bottom: 6px;">
+        Trusted by Educators & Enrollees
+      </h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); max-width: 480px; margin: 0 auto;">
+        Real reviews from principals, subject leads, and high school student council members.
+      </p>
+    </div>
+
+    <div class="testimonials-grid">
+      
+      <!-- Review 1 -->
+      <div class="neo-flat" style="border-radius: 20px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="color: var(--accent-amber); font-size: 0.9rem; margin-bottom: 8px;">★★★★★</div>
+          <p style="font-size: 0.85rem; color: var(--text-sub); line-height: 1.65; font-style: italic; margin-bottom: 18px;">
+            "EduSphere streamlined our entire campus workflow. The seamless passes eliminated 90% of entrance paperwork, giving our faculty more time to teach."
+          </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem;">
+            RR
+          </div>
+          <div>
+            <div style="font-weight: 800; font-size: 0.86rem;">Dr. Roberto M. Reyes</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">High School Principal, MASI</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review 2 -->
+      <div class="neo-flat" style="border-radius: 20px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="color: var(--accent-amber); font-size: 0.9rem; margin-bottom: 8px;">★★★★★</div>
+          <p style="font-size: 0.85rem; color: var(--text-sub); line-height: 1.65; font-style: italic; margin-bottom: 18px;">
+            "Setting up laboratory rosters and posting assignments takes seconds now. The mobile view makes checking attendance effortless during lectures."
+          </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem;">
+            MS
+          </div>
+          <div>
+            <div style="font-weight: 800; font-size: 0.86rem;">Prof. Maria Elena Santos</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Department Chair, Natural Sciences</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review 3 -->
+      <div class="neo-flat" style="border-radius: 20px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="color: var(--accent-amber); font-size: 0.9rem; margin-bottom: 8px;">★★★★★</div>
+          <p style="font-size: 0.85rem; color: var(--text-sub); line-height: 1.65; font-style: italic; margin-bottom: 18px;">
+            "Getting our digital ID pass and seeing schedules right on our smartphones without installing heavy bloated apps is the best upgrade our school ever had."
+          </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem;">
+            KC
+          </div>
+          <div>
+            <div style="font-weight: 800; font-size: 0.86rem;">Kirsten Andrea C.</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Grade 11 Student & SSC President</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== FEEDBACK MANAGEMENT SECTION (STRICTLY ADMIN ONLY) ===== -->
+  <section id="feedback" class="container section-wrap">
+    
+    <!-- IF USER IS STUDENT: SHOW RESTRICTED ACCESS SCREEN -->
+    <div id="feedbackLockedView" class="neo-flat" style="border-radius: 24px; padding: 40px 24px; text-align: center; max-width: 680px; margin: 0 auto;">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(139, 92, 246, 0.15); color: var(--accent-admin); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 16px;">
+        🔒
+      </div>
+      <div class="neo-pressed" style="display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 0.72rem; font-weight: 800; color: var(--accent-admin); text-transform: uppercase; margin-bottom: 10px;">
+        Admin Authorization Required
+      </div>
+      <h2 style="font-size: 1.85rem; font-weight: 800; margin-bottom: 8px;">
+        Feedback Portal is for Admin Only
+      </h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; max-width: 480px; margin: 0 auto 24px;">
+        To protect student confidentiality and FERPA compliance, submitted feedback, reports, and administrative responses can only be accessed by verified Administrators and Faculty.
+      </p>
+
+      <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn-theme admin-mode" onclick="switchRole('admin')" style="padding: 12px 24px;">
+          🛡️ Switch to Admin Portal
+        </button>
+        <a href="#modules" class="btn btn-flat" style="padding: 12px 20px;">
+          Back to Academic Modules
+        </a>
+      </div>
+    </div>
+
+    <!-- IF USER IS ADMIN: FULL FEEDBACK COMMAND CENTER -->
+    <div id="feedbackAdminView" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <div class="neo-pressed" style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; color: var(--accent-admin); text-transform: uppercase; margin-bottom: 6px;">
+            🔒 Admin Console • Feedback & Incident Intelligence
+          </div>
+          <h2 style="font-size: 2rem; font-weight: 800; letter-spacing: -0.6px; margin: 0;">
+            Student & Faculty Feedback Review
+          </h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+            Confidential repository of submissions, bug reports, and campus climate remarks.
+          </p>
+        </div>
+
+        <button type="button" class="btn btn-theme admin-mode" onclick="openNewFeedbackModal()" style="padding: 9px 18px;">
+          + Log Executive Note
+        </button>
+      </div>
+
+      <!-- Feedback Stats Row -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+        <div class="neo-flat" style="border-radius: 16px; padding: 16px;">
+          <div style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted);">TOTAL FEEDBACKS</div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-admin);" id="fbTotalCount">18</div>
+        </div>
+        <div class="neo-flat" style="border-radius: 16px; padding: 16px;">
+          <div style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted);">PENDING ACTION</div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-amber);" id="fbPendingCount">3</div>
+        </div>
+        <div class="neo-flat" style="border-radius: 16px; padding: 16px;">
+          <div style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted);">RESOLVED RATE</div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-green);">94.2%</div>
+        </div>
+        <div class="neo-flat" style="border-radius: 16px; padding: 16px;">
+          <div style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted);">AVERAGE RESPONSE</div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-student);">4.2 hrs</div>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="feedback-tabs">
+        <button type="button" class="tab-btn active" onclick="filterFeedback('all', this)">All Submissions (18)</button>
+        <button type="button" class="tab-btn" onclick="filterFeedback('modules', this)">Academic Modules</button>
+        <button type="button" class="tab-btn" onclick="filterFeedback('safety', this)">Campus Safety</button>
+        <button type="button" class="tab-btn" onclick="filterFeedback('urgent', this)">Urgent Priority</button>
+      </div>
+
+      <!-- Feedback List Cards -->
+      <div id="feedbackList">
+        
+        <!-- Feedback 1 -->
+        <div class="fb-card" data-category="modules">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge-lock" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-student);">Academic Modules</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted);">LRN-2026-48910 • Grade 11 STEM</span>
+            </div>
+            <span style="font-size: 0.74rem; font-weight: 700; color: var(--accent-green); background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 8px;">Resolved</span>
+          </div>
+          <div style="font-weight: 800; font-size: 0.95rem;">Missing Advanced Physics Module 4 lecture notes in portal</div>
+          <p style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.5; margin: 0;">
+            The PDF slide download link for Chapter 4 Thermodynamics gives a 404 error when clicking from mobile phones. Can the faculty re-sync the file?
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid rgba(163, 177, 198, 0.2); padding-top: 8px; margin-top: 4px;">
+            <span>Submitted: Oct 6, 2026 • 09:30 AM</span>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-flat" style="padding: 4px 10px; font-size: 0.72rem;" onclick="showToast('Re-uploaded Chapter 4 slides to student repository!')">Acknowledge</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback 2 -->
+        <div class="fb-card" data-category="safety">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge-lock" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-red);">Campus Safety</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted);">Parent LRN-2026-88120 • South Gate</span>
+            </div>
+            <span style="font-size: 0.74rem; font-weight: 700; color: var(--accent-amber); background: rgba(245, 158, 11, 0.15); padding: 2px 8px; border-radius: 8px;">In Review</span>
+          </div>
+          <div style="font-weight: 800; font-size: 0.95rem;">South Turnstile RFID Scanner latency during 7:30 AM rush</div>
+          <p style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.5; margin: 0;">
+            The scanner at Gate 2 takes about 4 seconds to register each student pass, causing small lines near the crosswalk before morning assembly.
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid rgba(163, 177, 198, 0.2); padding-top: 8px; margin-top: 4px;">
+            <span>Submitted: Oct 7, 2026 • 07:45 AM</span>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-theme admin-mode" style="padding: 4px 10px; font-size: 0.72rem;" onclick="showToast('Campus security dispatched maintenance team to Gate 2.')">Dispatch Tech</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback 3 -->
+        <div class="fb-card" data-category="modules">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge-lock" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-admin);">Academic Modules</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted);">Faculty ID FAC-2026-114 • Mathematics Dept</span>
+            </div>
+            <span style="font-size: 0.74rem; font-weight: 700; color: var(--accent-green); background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 8px;">Resolved</span>
+          </div>
+          <div style="font-weight: 800; font-size: 0.95rem;">Requesting batch grade dispatch confirmation for Section Archimedes</div>
+          <p style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.5; margin: 0;">
+            Midterm calculus score telemetry was posted successfully. All 42 student portals reflect their updated GPA rank.
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid rgba(163, 177, 198, 0.2); padding-top: 8px; margin-top: 4px;">
+            <span>Submitted: Oct 7, 2026 • 11:15 AM</span>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-flat" style="padding: 4px 10px; font-size: 0.72rem;" onclick="showToast('Audit recorded in executive ledger.')">Archived</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer style="border-top: 1px solid rgba(163, 177, 198, 0.35); padding: 30px 1rem; margin-top: 40px;">
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-weight: 800; font-size: 1.05rem;">Edu<span style="color: var(--accent-student)">Sphere</span></span>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">© 2026 Official Campus Academic & Safety Network</span>
+      </div>
+
+      <div style="display: flex; gap: 14px; font-size: 0.8rem;">
+        <a href="javascript:void(0)" onclick="openLegalModal('privacy')" style="color: var(--text-sub); text-decoration: underline;">Privacy Charter (FERPA)</a>
+        <a href="javascript:void(0)" onclick="openLegalModal('safety')" style="color: var(--text-sub); text-decoration: underline;">Child Protection Standard</a>
+        <a href="javascript:void(0)" onclick="openLegalModal('conduct')" style="color: var(--text-sub); text-decoration: underline;">Student Honor Code</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== ROLE SELECTION MODAL ===== -->
+  <div class="modal-backdrop" id="roleModal" onclick="closeRoleModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0;">Select Campus Role</h3>
+          <p style="font-size: 0.76rem; color: var(--text-muted); margin: 2px 0 0;">Toggle between Student view and Administrator clearance</p>
+        </div>
+        <button type="button" class="btn btn-flat" onclick="closeRoleModal()" style="width: 32px; height: 32px; border-radius: 50%; padding: 0;">✕</button>
+      </div>
+
+      <!-- Student Role Card -->
+      <button type="button" class="role-card-btn active-student" id="cardRoleStudent" onclick="switchRole('student')">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+          🎓
+        </div>
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight: 800; font-size: 0.98rem;">Student Portal</div>
+            <span class="badge-lock" id="badgeStudentSel" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-student);">Selected</span>
+          </div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px;">
+            Access to Modules, Campus Safety & Testimonials. (Feedback is restricted).
+          </div>
+        </div>
+      </button>
+
+      <!-- Admin Role Card -->
+      <button type="button" class="role-card-btn" id="cardRoleAdmin" onclick="switchRole('admin')">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+          🛡️
+        </div>
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight: 800; font-size: 0.98rem;">Admin & Principal Portal</div>
+            <span class="badge-lock" id="badgeAdminSel" style="display: none; background: rgba(139, 92, 246, 0.15); color: var(--accent-admin);">Selected</span>
+          </div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px;">
+            Full Access: Modules, Campus Safety, Testimonials + <strong>Feedback Console Unlocked</strong>.
+          </div>
+        </div>
+      </button>
+
+      <div style="margin-top: 14px; text-align: center;">
+        <button type="button" class="btn btn-flat" onclick="closeRoleModal()" style="padding: 8px 24px;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LEGAL / COMPLIANCE MODAL ===== -->
+  <div class="modal-backdrop" id="legalModal" onclick="closeLegalModal()">
+    <div class="modal-box" style="max-width: 600px;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid rgba(163, 177, 198, 0.3); padding-bottom: 10px;">
+        <h3 style="font-size: 1.15rem; font-weight: 800;" id="legalModalTitle">Campus Compliance</h3>
+        <button type="button" class="btn btn-flat" onclick="closeLegalModal()" style="width: 30px; height: 30px; border-radius: 50%; padding: 0;">✕</button>
+      </div>
+      <div id="legalModalBody" style="font-size: 0.86rem; color: var(--text-sub); line-height: 1.7; max-height: 60vh; overflow-y: auto;">
+      </div>
+      <div style="margin-top: 16px; text-align: right;">
+        <button type="button" class="btn btn-theme" onclick="closeLegalModal()" style="padding: 8px 20px;">Understood</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOAST MESSAGE ===== -->
+  <div id="toast">
+    <span>✓</span>
+    <span id="toastMsg">Action completed successfully</span>
+  </div>
+
+  <!-- ===== JAVASCRIPT LOGIC ===== -->
+  <script>
+    // State management
+    let currentRole = localStorage.getItem("edusphere_role") || "student"; // 'student' | 'admin'
+    let currentStep = 1;
+    let generatedPass = null;
+
+    // Helper: count unique students by Student ID / LRN or Email (transitive equality)
+    function countUniqueStudents(students) {
+      if (!Array.isArray(students) || students.length === 0) return 0;
+      const valid = students.filter(s => {
+        if (!s) return false;
+        const id = (s.studentId || s.id || "").toString().trim().toLowerCase();
+        const email = (s.email || "").toString().trim().toLowerCase();
+        return id.length > 0 || email.length > 0;
+      });
+      if (valid.length === 0) return 0;
+
+      const parent = valid.map((_, i) => i);
+      function find(i) {
+        if (parent[i] === i) return i;
+        parent[i] = find(parent[i]);
+        return parent[i];
+      }
+      function union(i, j) {
+        const rootI = find(i);
+        const rootJ = find(j);
+        if (rootI !== rootJ) parent[rootI] = rootJ;
+      }
+
+      const idMap = new Map();
+      const emailMap = new Map();
+
+      valid.forEach((s, idx) => {
+        const id = (s.studentId || s.id || "").toString().trim().toLowerCase();
+        const email = (s.email || "").toString().trim().toLowerCase();
+        if (id) {
+          if (idMap.has(id)) union(idx, idMap.get(id));
+          else idMap.set(id, idx);
+        }
+        if (email) {
+          if (emailMap.has(email)) union(idx, emailMap.get(email));
+          else emailMap.set(email, idx);
+        }
+      });
+
+      const uniqueRoots = new Set();
+      valid.forEach((_, idx) => uniqueRoots.add(find(idx)));
+      return uniqueRoots.size;
+    }
+
+    function updateStudentCounterDisplay() {
+      try {
+        const stored = JSON.parse(localStorage.getItem("registered_students") || "[]");
+        const count = countUniqueStudents(stored);
+        localStorage.setItem("enrolled_count", count.toString());
+        const el = document.getElementById("statStudents");
+        if (el) el.innerText = count.toLocaleString();
+      } catch (e) {
+        const el = document.getElementById("statStudents");
+        if (el) el.innerText = "0";
+      }
+    }
+
+    // Initialize UI on load
+    document.addEventListener("DOMContentLoaded", () => {
+      // Reset counter to 0 before applying unique counting function if not reset yet
+      const RESET_FLAG = "enrolled_students_reset_to_zero_v3";
+      if (!localStorage.getItem(RESET_FLAG)) {
+        localStorage.setItem(RESET_FLAG, "true");
+        localStorage.setItem("enrolled_count", "0");
+        localStorage.setItem("registered_students", "[]");
+        const el = document.getElementById("statStudents");
+        if (el) el.innerText = "0";
+      } else {
+        updateStudentCounterDisplay();
+      }
+
+      window.addEventListener("storage", (e) => {
+        if (e.key === "registered_students" || e.key === "enrolled_count") {
+          updateStudentCounterDisplay();
+        }
+      });
+      // Check for saved student or admin session (persist across refresh)
+      const savedStudent = localStorage.getItem("current_student");
+      if (savedStudent) {
+        try {
+          const studentObj = JSON.parse(savedStudent);
+          generatedPass = studentObj;
+          currentRole = "student";
+          localStorage.setItem("edusphere_role", "student");
+          applyRoleUI("student");
+          displayStudentPassResult(studentObj);
+          return;
+        } catch (e) {
+          console.error("Failed to restore student session", e);
+          localStorage.removeItem("current_student");
+        }
+      }
+
+      const savedAdmin = localStorage.getItem("current_admin") || localStorage.getItem("current_faculty");
+      if (savedAdmin) {
+        try {
+          const adminObj = JSON.parse(savedAdmin);
+          generatedPass = adminObj;
+          currentRole = "admin";
+          localStorage.setItem("edusphere_role", "admin");
+          applyRoleUI("admin");
+          displayAdminPassResult(adminObj);
+          return;
+        } catch (e) {
+          console.error("Failed to restore admin session", e);
+          localStorage.removeItem("current_admin");
+          localStorage.removeItem("current_faculty");
+        }
+      }
+
+      applyRoleUI(currentRole);
+    });
+
+    // Switch Role between Student and Admin
+    function switchRole(role) {
+      currentRole = role;
+      localStorage.setItem("edusphere_role", role);
+      applyRoleUI(role);
+      closeRoleModal();
+      showToast(`Switched to ${role === 'student' ? 'Student Portal' : 'Administrator Portal'} mode!`);
+    }
+
+    // Apply role-based visibility and styling
+    function applyRoleUI(role) {
+      const isStudent = (role === "student");
+      
+      // Update Root CSS variables
+      if (isStudent) {
+        document.documentElement.style.setProperty("--theme-color", "#3b82f6");
+        document.documentElement.style.setProperty("--theme-grad", "linear-gradient(135deg, #3b82f6, #1d4ed8)");
+      } else {
+        document.documentElement.style.setProperty("--theme-color", "#8b5cf6");
+        document.documentElement.style.setProperty("--theme-grad", "linear-gradient(135deg, #8b5cf6, #6d28d9)");
+      }
+
+      // Navbar styling
+      document.getElementById("roleBtnText").innerText = isStudent ? "Student Portal" : "Admin Portal";
+      document.getElementById("roleBtnIcon").innerText = isStudent ? "🎓" : "🛡️";
+      document.getElementById("brandAccent").style.color = isStudent ? "var(--accent-student)" : "var(--accent-admin)";
+      
+      const roleBtn = document.getElementById("roleTriggerBtn");
+      if (isStudent) {
+        roleBtn.classList.remove("admin-mode");
+      } else {
+        roleBtn.classList.add("admin-mode");
+      }
+
+      // Hero Badges
+      const heroRoleBadge = document.getElementById("heroRoleBadge");
+      const heroRoleText = document.getElementById("heroRoleText");
+      if (isStudent) {
+        heroRoleBadge.className = "role-indicator-badge student";
+        heroRoleText.innerText = "Student Access Active";
+      } else {
+        heroRoleBadge.className = "role-indicator-badge admin";
+        heroRoleText.innerText = "Admin Clearance Active";
+      }
+
+      // Modal selection indicators
+      const cardStudent = document.getElementById("cardRoleStudent");
+      const cardAdmin = document.getElementById("cardRoleAdmin");
+      const badgeStudent = document.getElementById("badgeStudentSel");
+      const badgeAdmin = document.getElementById("badgeAdminSel");
+
+      if (isStudent) {
+        cardStudent.className = "role-card-btn active-student";
+        cardAdmin.className = "role-card-btn";
+        badgeStudent.style.display = "inline-block";
+        badgeAdmin.style.display = "none";
+      } else {
+        cardStudent.className = "role-card-btn";
+        cardAdmin.className = "role-card-btn active-admin";
+        badgeStudent.style.display = "none";
+        badgeAdmin.style.display = "inline-block";
+      }
+
+      // Nav Feedback Badge
+      const fbBadge = document.getElementById("feedbackNavBadge");
+      if (isStudent) {
+        fbBadge.innerText = "Admin Only";
+        fbBadge.style.color = "var(--accent-admin)";
+      } else {
+        fbBadge.innerText = "Unlocked";
+        fbBadge.style.color = "var(--accent-green)";
+      }
+
+      // Role Permission Label
+      document.getElementById("rolePermissionLabel").innerText = isStudent ? "Student Mode" : "Admin Master Mode";
+      document.getElementById("rolePermissionLabel").style.color = isStudent ? "var(--accent-student)" : "var(--accent-admin)";
+
+      // Form Track Toggle
+      document.getElementById("studentTrack").style.display = isStudent ? "block" : "none";
+      document.getElementById("adminTrack").style.display = isStudent ? "none" : "block";
+      document.getElementById("formRoleBadge").innerText = isStudent ? "Active Mode: Student Registration" : "Active Mode: Admin Clearance";
+      document.getElementById("wizardGoalTitle").innerText = isStudent ? "Goal: Official Student Digital Pass" : "Goal: Tier-1 Admin Clearance Pass";
+
+      // FEEDBACK VIEW: ADMIN ONLY!
+      const lockedView = document.getElementById("feedbackLockedView");
+      const adminView = document.getElementById("feedbackAdminView");
+
+      if (isStudent) {
+        // Locked for students
+        lockedView.style.display = "block";
+        adminView.style.display = "none";
+      } else {
+        // Available for admin
+        lockedView.style.display = "none";
+        adminView.style.display = "block";
+      }
+
+      // Reset step indicator
+      goToStep(1);
+    }
+
+    // Modal controls
+    function openRoleModal() {
+      document.getElementById("roleModal").classList.add("show");
+    }
+    function closeRoleModal() {
+      document.getElementById("roleModal").classList.remove("show");
+    }
+
+    function toggleMobileNav() {
+      document.getElementById("navLinks").classList.toggle("open");
+    }
+
+    // Multi-step form navigation
+    function goToStep(stepNum) {
+      currentStep = stepNum;
+      
+      // Update step panes for Student
+      for (let i = 1; i <= 4; i++) {
+        const pane = document.getElementById(`step-s${i}`);
+        if (pane) pane.style.display = (i === stepNum) ? "block" : "none";
+      }
+
+      const total = (currentRole === "student") ? 4 : 1;
+      const pct = Math.round((stepNum / total) * 100);
+      document.getElementById("progressBar").style.width = `${pct}%`;
+      document.getElementById("wizardProgressPct").innerText = `Step ${stepNum} of ${total} (${pct}%)`;
+    }
+
+    // Auto Demo Student Fill
+    function fillStudentDemo() {
+      document.getElementById("s_fullName").value = "Janelle Marie Gomez";
+      document.getElementById("s_id").value = "LRN-2026-48910";
+      document.getElementById("s_email").value = "janelle.gomez@students.edusphere.edu";
+      document.getElementById("s_guardianName").value = "Corazon Gomez (Mother)";
+      document.getElementById("s_guardianPhone").value = "+63 (917) 845-2901";
+      document.getElementById("s_pwd").value = "StudentPass@2026";
+      document.getElementById("s_pwd2").value = "StudentPass@2026";
+      document.getElementById("s_terms").checked = true;
+      showToast("Auto-filled student demo fields!");
+    }
+
+    // Auto Demo Admin Fill
+    function fillAdminDemo() {
+      document.getElementById("a_fullName").value = "Dr. Jorge Escober, Ph.D.";
+      document.getElementById("a_id").value = "FAC-ADM-2026-004";
+      document.getElementById("a_inst").value = "Metropolitan Academic Science Institute";
+      document.getElementById("a_email").value = "jorge.escober@principals.edusphere.edu";
+      document.getElementById("a_office").value = "Executive Admin Wing, Rm 101";
+      const pwdEl = document.getElementById("a_password");
+      if (pwdEl) pwdEl.value = "PrincipalMaster@2026";
+      document.getElementById("a_terms").checked = true;
+      showToast("Auto-filled administrator credentials!");
+    }
+
+    // Handle Form Submit
+    function handleFormSubmit() {
+      const isStudent = (currentRole === "student");
+      const passId = isStudent 
+        ? `STU-PASS-${Math.floor(100000 + Math.random() * 900000)}` 
+        : `FAC-AUTH-${Math.floor(100000 + Math.random() * 900000)}`;
+      
+      const now = new Date().toLocaleString();
+
+      if (isStudent) {
+        const sectionVal = document.getElementById("s_section")?.value || "Archimedes - Room 204";
+        const phoneVal = document.getElementById("s_guardianPhone")?.value || "+63 (917) 845-2901";
+        generatedPass = {
+          role: "Student",
+          passId: passId,
+          name: document.getElementById("s_fullName").value,
+          id: document.getElementById("s_id").value,
+          grade: document.getElementById("s_grade").value,
+          strand: document.getElementById("s_strand").value,
+          email: document.getElementById("s_email").value,
+          guardian: document.getElementById("s_guardianName").value,
+          phone: phoneVal,
+          section: sectionVal,
+          issuedAt: now
+        };
+
+        // Save registered account to localStorage (deduplicating by Student ID / LRN or Email)
+        try {
+          let stored = JSON.parse(localStorage.getItem("registered_students") || "[]");
+          if (!Array.isArray(stored)) stored = [];
+
+          const formId = (generatedPass.id || "").trim().toLowerCase();
+          const formEmail = (generatedPass.email || "").trim().toLowerCase();
+
+          const existingIdx = stored.findIndex(u => {
+            const uId = (u.studentId || u.id || "").toString().trim().toLowerCase();
+            const uEmail = (u.email || "").toString().trim().toLowerCase();
+            return (formId && uId && uId === formId) || (formEmail && uEmail && uEmail === formEmail);
+          });
+
+          const studentData = {
+            studentId: generatedPass.id,
+            email: generatedPass.email,
+            fullName: generatedPass.name,
+            password: document.getElementById("s_pwd")?.value || "",
+            passId: generatedPass.passId,
+            gradeLevel: generatedPass.grade,
+            strand: generatedPass.strand,
+            section: sectionVal,
+            guardianName: generatedPass.guardian,
+            guardianPhone: phoneVal,
+            issuedAt: generatedPass.issuedAt
+          };
+
+          if (existingIdx >= 0) {
+            stored[existingIdx] = { ...stored[existingIdx], ...studentData };
+          } else {
+            stored.push(studentData);
+          }
+
+          localStorage.setItem("registered_students", JSON.stringify(stored));
+          const count = countUniqueStudents(stored);
+          localStorage.setItem("enrolled_count", count.toString());
+          const statEl = document.getElementById("statStudents");
+          if (statEl) statEl.innerText = count.toLocaleString();
+        } catch (e) {
+          console.error("Failed to store registered account", e);
+        }
+
+        // Save current session so it persists across refresh
+        localStorage.setItem("current_student", JSON.stringify(generatedPass));
+
+        // Show the verified pass card with 3 detail cards
+        displayStudentPassResult(generatedPass);
+        showToast("Pass generated and verified successfully!");
+        return; // Done for student registration
+
+      } else {
+        const pwdVal = document.getElementById("a_password")?.value || "PrincipalMaster@2026";
+        generatedPass = {
+          role: "Administrator",
+          passId: passId,
+          name: document.getElementById("a_fullName").value,
+          id: document.getElementById("a_id").value,
+          execRole: document.getElementById("a_role").value,
+          institution: document.getElementById("a_inst").value,
+          email: document.getElementById("a_email").value,
+          office: document.getElementById("a_office").value || "Executive Admin Wing, Rm 101",
+          issuedAt: now
+        };
+
+        // Save registered admin account to localStorage
+        try {
+          const stored = JSON.parse(localStorage.getItem("registered_admins") || "[]");
+          const filtered = stored.filter(u => (u.id || u.facultyId)?.toLowerCase() !== generatedPass.id.toLowerCase());
+          filtered.push({
+            ...generatedPass,
+            facultyId: generatedPass.id,
+            fullName: generatedPass.name,
+            password: pwdVal
+          });
+          localStorage.setItem("registered_admins", JSON.stringify(filtered));
+          localStorage.setItem("registered_faculty", JSON.stringify(filtered));
+        } catch (e) {
+          console.error("Failed to store registered admin account", e);
+        }
+
+        // Save current session so it persists across refresh
+        localStorage.setItem("current_admin", JSON.stringify(generatedPass));
+        localStorage.setItem("current_faculty", JSON.stringify(generatedPass));
+
+        displayAdminPassResult(generatedPass);
+        showToast("Admin clearance pass issued successfully!");
+        return;
+      }
+    }
+
+    // Toggle between Student Registration and Login Box
+    function toggleStudentAuth(mode) {
+      const isLogin = (mode === "login");
+      const loginBox = document.getElementById("studentLoginBox");
+      const s1 = document.getElementById("step-s1");
+      const s2 = document.getElementById("step-s2");
+      const s3 = document.getElementById("step-s3");
+      const s4 = document.getElementById("step-s4");
+
+      if (isLogin) {
+        if (loginBox) loginBox.style.display = "block";
+        if (s1) s1.style.display = "none";
+        if (s2) s2.style.display = "none";
+        if (s3) s3.style.display = "none";
+        if (s4) s4.style.display = "none";
+        document.getElementById("wizardGoalTitle").innerText = "Goal: Registered Student Portal Authentication";
+        document.getElementById("wizardProgressPct").innerText = "Registered Student Access";
+        document.getElementById("progressBar").style.width = "100%";
+      } else {
+        if (loginBox) loginBox.style.display = "none";
+        goToStep(1);
+        document.getElementById("wizardGoalTitle").innerText = "Goal: Official Student Digital Pass";
+      }
+    }
+
+    // Toggle between Admin Registration and Login Box
+    function toggleAdminAuth(mode) {
+      const isLogin = (mode === "login");
+      const loginBox = document.getElementById("adminLoginBox");
+      const a1 = document.getElementById("step-a1");
+
+      if (isLogin) {
+        if (loginBox) loginBox.style.display = "block";
+        if (a1) a1.style.display = "none";
+        document.getElementById("wizardGoalTitle").innerText = "Goal: Registered Admin / Faculty Authentication";
+        document.getElementById("wizardProgressPct").innerText = "Registered Administrator Access";
+        document.getElementById("progressBar").style.width = "100%";
+      } else {
+        if (loginBox) loginBox.style.display = "none";
+        if (a1) a1.style.display = "block";
+        document.getElementById("wizardGoalTitle").innerText = "Goal: Tier-1 Admin Clearance Pass";
+        document.getElementById("wizardProgressPct").innerText = "Step 1 of 1 (100%)";
+        document.getElementById("progressBar").style.width = "100%";
+      }
+    }
+
+    // Handle Student Login from localStorage
+    function handleStudentLogin() {
+      const idInput = document.getElementById("login_identifier").value.trim().toLowerCase();
+      const pwdInput = document.getElementById("login_password").value;
+      const errEl = document.getElementById("loginErrMsg");
+
+      if (!idInput || !pwdInput) {
+        errEl.innerText = "Please enter both your Student ID/Email and password.";
+        errEl.style.display = "block";
+        return;
+      }
+
+      try {
+        const stored = JSON.parse(localStorage.getItem("registered_students") || "[]");
+        const matched = stored.find(u =>
+          (u.studentId?.toLowerCase() === idInput || u.email?.toLowerCase() === idInput) &&
+          u.password === pwdInput
+        );
+
+        const fallbackDemo = (!matched && (idInput === "lrn-2026-48910" || idInput === "janelle.gomez@students.edusphere.edu") && pwdInput === "StudentPass@2026")
+          ? {
+              passId: "STU-PASS-489100",
+              fullName: "Janelle Marie Gomez",
+              studentId: "LRN-2026-48910",
+              gradeLevel: "Grade 11 - Senior High",
+              strand: "STEM (Science, Tech, Eng & Math)",
+              section: "Archimedes - Room 204",
+              email: "janelle.gomez@students.edusphere.edu",
+              guardianName: "Corazon Gomez (Mother)",
+              issuedAt: new Date().toLocaleString()
+            }
+          : null;
+
+        const finalUser = matched || fallbackDemo;
+
+        if (finalUser) {
+          errEl.style.display = "none";
+
+          // Ensure logged-in student is recorded and deduplicated by Student ID / LRN or Email
+          let storedList = [];
+          try {
+            storedList = JSON.parse(localStorage.getItem("registered_students") || "[]");
+            if (!Array.isArray(storedList)) storedList = [];
+          } catch (e) {
+            storedList = [];
+          }
+
+          const fId = (finalUser.studentId || finalUser.id || "").toString().trim().toLowerCase();
+          const fEmail = (finalUser.email || "").toString().trim().toLowerCase();
+
+          const existingIdx = storedList.findIndex(u => {
+            const uId = (u.studentId || u.id || "").toString().trim().toLowerCase();
+            const uEmail = (u.email || "").toString().trim().toLowerCase();
+            return (fId && uId && uId === fId) || (fEmail && uEmail && uEmail === fEmail);
+          });
+
+          if (existingIdx === -1) {
+            storedList.push(finalUser);
+            localStorage.setItem("registered_students", JSON.stringify(storedList));
+          }
+
+          const count = countUniqueStudents(storedList);
+          localStorage.setItem("enrolled_count", count.toString());
+          const statEl = document.getElementById("statStudents");
+          if (statEl) statEl.innerText = count.toLocaleString();
+
+          generatedPass = {
+            role: "Student",
+            passId: finalUser.passId || "STU-PASS-" + Math.floor(100000 + Math.random() * 900000),
+            name: finalUser.fullName || finalUser.name,
+            id: finalUser.studentId || finalUser.id,
+            grade: finalUser.gradeLevel || finalUser.grade || "Grade 11",
+            strand: finalUser.strand || "STEM",
+            email: finalUser.email,
+            guardian: finalUser.guardianName || finalUser.guardian || "Guardian on file",
+            phone: finalUser.guardianPhone || finalUser.phone || "+63 (917) 845-2901",
+            section: finalUser.section || "Archimedes - Room 204",
+            issuedAt: finalUser.issuedAt || new Date().toLocaleString()
+          };
+
+          // Save current session so it persists across refresh
+          localStorage.setItem("current_student", JSON.stringify(generatedPass));
+
+          // Show the verified pass card
+          displayStudentPassResult(generatedPass);
+          showToast("Logged in successfully! Pass retrieved.");
+        } else {
+          errEl.innerText = "Account not found or password incorrect. Please verify your credentials or register.";
+          errEl.style.display = "block";
+        }
+      } catch (err) {
+        errEl.innerText = "Error verifying registered accounts.";
+        errEl.style.display = "block";
+      }
+    }
+
+    function fillStudentDemoLogin() {
+      document.getElementById("login_identifier").value = "LRN-2026-48910";
+      document.getElementById("login_password").value = "StudentPass@2026";
+      showToast("Demo credentials filled!");
+    }
+
+    // Handle Admin Login from localStorage
+    function handleAdminLogin() {
+      const idInput = document.getElementById("admin_login_identifier").value.trim().toLowerCase();
+      const pwdInput = document.getElementById("admin_login_password").value;
+      const errEl = document.getElementById("adminLoginErrMsg");
+
+      if (!idInput || !pwdInput) {
+        errEl.innerText = "Please enter both your Faculty / Employee ID and password.";
+        errEl.style.display = "block";
+        return;
+      }
+
+      try {
+        const stored = JSON.parse(localStorage.getItem("registered_admins") || localStorage.getItem("registered_faculty") || "[]");
+        const matched = stored.find(u =>
+          ((u.id || u.facultyId)?.toLowerCase() === idInput || u.email?.toLowerCase() === idInput) &&
+          u.password === pwdInput
+        );
+
+        const fallbackDemo = (!matched && (idInput === "fac-adm-2026-004" || idInput === "jorge.escober@principals.edusphere.edu") && pwdInput === "PrincipalMaster@2026")
+          ? {
+              passId: "FAC-ADM-2026-004",
+              name: "Dr. Jorge Escober, Ph.D.",
+              id: "FAC-ADM-2026-004",
+              execRole: "Principal / Head of School",
+              institution: "Metropolitan Academic Science Institute",
+              email: "jorge.escober@principals.edusphere.edu",
+              office: "Executive Admin Wing, Rm 101",
+              issuedAt: new Date().toLocaleString()
+            }
+          : null;
+
+        const finalUser = matched || fallbackDemo;
+
+        if (finalUser) {
+          errEl.style.display = "none";
+          generatedPass = {
+            role: "Administrator",
+            passId: finalUser.passId || finalUser.credentialId || "FAC-AUTH-" + Math.floor(100000 + Math.random() * 900000),
+            name: finalUser.name || finalUser.fullName,
+            id: finalUser.id || finalUser.facultyId,
+            execRole: finalUser.execRole || finalUser.role || "Executive",
+            institution: finalUser.institution || "Metropolitan Academic Science Institute",
+            email: finalUser.email,
+            office: finalUser.office || finalUser.roomOffice || "Executive Admin Wing, Rm 101",
+            issuedAt: finalUser.issuedAt || new Date().toLocaleString()
+          };
+
+          localStorage.setItem("current_admin", JSON.stringify(generatedPass));
+          localStorage.setItem("current_faculty", JSON.stringify(generatedPass));
+
+          displayAdminPassResult(generatedPass);
+          showToast("Logged in successfully! Clearance verified.");
+        } else {
+          errEl.innerText = "Account not found or password incorrect. Please verify your credentials or register.";
+          errEl.style.display = "block";
+        }
+      } catch (err) {
+        errEl.innerText = "Error verifying registered accounts.";
+        errEl.style.display = "block";
+      }
+    }
+
+    function fillAdminDemoLogin() {
+      document.getElementById("admin_login_identifier").value = "FAC-ADM-2026-004";
+      document.getElementById("admin_login_password").value = "PrincipalMaster@2026";
+      showToast("Demo admin credentials filled!");
+    }
+
+    // Display the verified student pass result card (populates the 3 neomorphic cards)
+    function displayStudentPassResult(studentObj) {
+      document.getElementById("studentTrack").style.display = "none";
+      document.getElementById("adminTrack").style.display = "none";
+      document.getElementById("passResult").style.display = "block";
+
+      document.getElementById("resultTitle").innerText = `Welcome, ${studentObj.name}! 🎓`;
+
+      document.getElementById("cardPassNum").innerText = studentObj.passId || "STU-PASS-000000";
+      document.getElementById("cardLrn").innerText = "LRN: " + (studentObj.id || "N/A");
+      document.getElementById("cardPlacement").innerText = studentObj.grade || "Grade 11 - Senior High";
+      document.getElementById("cardSection").innerText = studentObj.section || "Archimedes - Room 204";
+      document.getElementById("cardGuardian").innerText = studentObj.guardian || "Guardian on file";
+      document.getElementById("cardPhone").innerText = studentObj.phone || "+63 (917) 845-2901";
+
+      document.getElementById("progressBar").style.width = "100%";
+      document.getElementById("progressBar").style.background = "linear-gradient(135deg, #10b981, #059669)";
+      document.getElementById("wizardGoalTitle").innerText = "Goal: Issue Official Student Digital Pass";
+      document.getElementById("wizardProgressPct").innerText = "100% GOAL CONVERTED!";
+      document.getElementById("wizardProgressPct").style.color = "#10b981";
+
+      updateNavbarForLoggedInUser(true);
+    }
+
+    // Display the verified admin clearance pass result card
+    function displayAdminPassResult(adminObj) {
+      document.getElementById("studentTrack").style.display = "none";
+      document.getElementById("adminTrack").style.display = "none";
+      document.getElementById("passResult").style.display = "block";
+
+      document.getElementById("resultTitle").innerText = `Clearance Active, ${adminObj.name || adminObj.fullName}! 🛡️`;
+
+      document.getElementById("cardPassNum").innerText = adminObj.passId || adminObj.credentialId || "FAC-AUTH-000000";
+      document.getElementById("cardLrn").innerText = "ID: " + (adminObj.id || adminObj.facultyId || "N/A");
+      document.getElementById("cardPlacement").innerText = adminObj.execRole || adminObj.role || "Executive";
+      document.getElementById("cardSection").innerText = adminObj.institution || "Main Campus";
+      document.getElementById("cardGuardian").innerText = adminObj.office || adminObj.roomOffice || "Executive Admin Wing";
+      document.getElementById("cardPhone").innerText = adminObj.email || "admin@edusphere.edu";
+
+      document.getElementById("progressBar").style.width = "100%";
+      document.getElementById("progressBar").style.background = "linear-gradient(135deg, #10b981, #059669)";
+      document.getElementById("wizardGoalTitle").innerText = "Goal: Tier-1 Admin Clearance Pass";
+      document.getElementById("wizardProgressPct").innerText = "100% GOAL CONVERTED!";
+      document.getElementById("wizardProgressPct").style.color = "#10b981";
+
+      updateNavbarForLoggedInUser(true);
+    }
+
+    // Update navbar button: toggle between Portal selector and "Sign Out"
+    function updateNavbarForLoggedInUser(isLoggedIn) {
+      const roleBtn = document.getElementById("roleTriggerBtn");
+      const roleBtnText = document.getElementById("roleBtnText");
+      const roleBtnIcon = document.getElementById("roleBtnIcon");
+
+      if (isLoggedIn) {
+        roleBtnText.innerText = "Sign Out";
+        roleBtnIcon.innerText = "🚪";
+        roleBtn.onclick = function() { handleUnifiedSignOut(); };
+        roleBtn.style.background = "#e0e5ec";
+        roleBtn.style.color = "#ef4444";
+        roleBtn.style.boxShadow = "4px 4px 10px #a3b1c6, -4px -4px 10px #ffffff";
+        roleBtn.title = "Click to sign out and return to registration";
+      } else {
+        roleBtnText.innerText = currentRole === "student" ? "Student Portal" : "Admin Portal";
+        roleBtnIcon.innerText = currentRole === "student" ? "🎓" : "🛡️";
+        roleBtn.onclick = function() { openRoleModal(); };
+        roleBtn.style.background = "";
+        roleBtn.style.color = "";
+        roleBtn.style.boxShadow = "";
+        roleBtn.title = "Click to choose Student or Faculty Portal";
+      }
+    }
+
+    function updateNavbarForLoggedInStudent(isLoggedIn) {
+      updateNavbarForLoggedInUser(isLoggedIn);
+    }
+
+    // Unified sign out: clear sessions, reset navbar, return to registration form
+    function handleUnifiedSignOut() {
+      localStorage.removeItem("current_student");
+      localStorage.removeItem("current_admin");
+      localStorage.removeItem("current_faculty");
+      generatedPass = null;
+
+      document.getElementById("passResult").style.display = "none";
+      document.getElementById("progressBar").style.background = "var(--theme-grad)";
+      document.getElementById("wizardProgressPct").style.color = "var(--theme-color)";
+
+      updateNavbarForLoggedInUser(false);
+      applyRoleUI(currentRole);
+
+      if (currentRole === "student") {
+        toggleStudentAuth('register');
+        goToStep(1);
+      } else {
+        toggleAdminAuth('register');
+      }
+
+      showToast("Signed out successfully. You can register or log in again.");
+    }
+
+    function handleStudentSignOut() {
+      handleUnifiedSignOut();
+    }
+
+    function handleAdminSignOut() {
+      handleUnifiedSignOut();
+    }
+
+    // Download pass file
+    function downloadPassText() {
+      if (!generatedPass) return;
+      const text = `========================================
+EDUSPHERE DIGITAL VERIFIED PASS
+========================================
+Pass ID: ${generatedPass.passId}
+Role: ${generatedPass.role}
+Name: ${generatedPass.name}
+ID: ${generatedPass.id}
+Tier: ${generatedPass.grade || generatedPass.execRole}
+Issued: ${generatedPass.issuedAt}
+Compliance: FERPA Shield & Campus Zero-Harassment Protected
+========================================`;
+
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `EduSphere-Pass-${generatedPass.id}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Downloaded pass credential file!");
+    }
+
+    // Copy Pass ID
+    function copyPassId() {
+      if (!generatedPass) return;
+      navigator.clipboard.writeText(generatedPass.passId);
+      const btn = document.getElementById("copyBtn");
+      btn.innerText = "Copied!";
+      setTimeout(() => { btn.innerText = "Copy Credential ID"; }, 2000);
+      showToast("Copied Pass ID to clipboard!");
+    }
+
+    // Feedback filter
+    function filterFeedback(category, btnEl) {
+      document.querySelectorAll(".feedback-tabs .tab-btn").forEach(b => b.classList.remove("active"));
+      btnEl.classList.add("active");
+
+      const cards = document.querySelectorAll("#feedbackList .fb-card");
+      cards.forEach(c => {
+        if (category === "all") {
+          c.style.display = "flex";
+        } else if (category === "urgent") {
+          c.style.display = c.innerHTML.includes("In Review") ? "flex" : "none";
+        } else {
+          c.style.display = (c.getAttribute("data-category") === category) ? "flex" : "none";
+        }
+      });
+    }
+
+    // Open Executive Note modal
+    function openNewFeedbackModal() {
+      const note = prompt("Enter executive administrative note or alert for the campus ledger:");
+      if (note && note.trim()) {
+        const list = document.getElementById("feedbackList");
+        const newCard = document.createElement("div");
+        newCard.className = "fb-card";
+        newCard.setAttribute("data-category", "modules");
+        newCard.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge-lock" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-admin);">Admin Dispatch</span>
+              <span style="font-size: 0.74rem; color: var(--text-muted);">Executive Office • Instant Note</span>
+            </div>
+            <span style="font-size: 0.74rem; font-weight: 700; color: var(--accent-green); background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 8px;">Logged</span>
+          </div>
+          <div style="font-weight: 800; font-size: 0.95rem;">${note}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--text-muted); border-top: 1px solid rgba(163, 177, 198, 0.2); padding-top: 8px; margin-top: 4px;">
+            <span>Submitted: Just now</span>
+            <span>Audited & Verified</span>
+          </div>
+        `;
+        list.prepend(newCard);
+        showToast("Executive feedback recorded in ledger!");
+      }
+    }
+
+    // Legal modal
+    function openLegalModal(tab) {
+      const modal = document.getElementById("legalModal");
+      const title = document.getElementById("legalModalTitle");
+      const body = document.getElementById("legalModalBody");
+
+      if (tab === "safety") {
+        title.innerText = "Child Protection & Safety Charter";
+        body.innerHTML = `
+          <p><strong>1. Zero-Harassment & Anti-Bullying Protocol</strong><br>
+          Our network adheres to strict zero-tolerance enforcement for bullying, discrimination, and cyber-harassment. All reports are confidential and reviewed within 12 hours by designated school counselors.</p>
+          <br>
+          <p><strong>2. Gate Telemetry & Real-Time Presence</strong><br>
+          Parent contact numbers are used exclusively for campus entry time notifications and emergency weather dispatch.</p>
+        `;
+      } else if (tab === "privacy") {
+        title.innerText = "FERPA Student Data Shield";
+        body.innerHTML = `
+          <p><strong>1. Family Educational Rights and Privacy Act (FERPA)</strong><br>
+          Student grades, medical notes, and family records are protected under federal standard confidentiality. Student records are never monetized or exposed to commercial third parties.</p>
+          <br>
+          <p><strong>2. Feedback Privacy Guard</strong><br>
+          All student feedback and incident reports are restricted exclusively to administrators and guidance counselors.</p>
+        `;
+      } else {
+        title.innerText = "Student & Faculty Honor Code";
+        body.innerHTML = `
+          <p><strong>1. Academic Integrity</strong><br>
+          All submitted homework assignments, module tests, and quiz dropboxes must represent the authentic work of the enrolled student.</p>
+          <br>
+          <p><strong>2. Faculty Code of Ethics</strong><br>
+          Educators pledge impartial grade assessments, timely grade telemetry, and protective oversight over all enrollees.</p>
+        `;
+      }
+
+      modal.classList.add("show");
+    }
+    function closeLegalModal() {
+      document.getElementById("legalModal").classList.remove("show");
+    }
+
+    // Toast utility
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toastMsg").innerText = msg;
+      toast.classList.add("show");
+      setTimeout(() => { toast.classList.remove("show"); }, 3200);
+    }
+  </script>
+</body>
+</html>
