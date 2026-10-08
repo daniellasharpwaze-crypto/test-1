@@ -359,6 +359,19 @@ const minBtnStyle: React.CSSProperties = {
 };
 
 export default function Home() {
+  const [gradesSent, setGradesSent] = useState(0);
+
+  useEffect(() => {
+    const total = parseInt(localStorage.getItem("total_grades_sent") || "0", 10);
+    setGradesSent(total);
+    
+    const handleStorage = () => {
+      const updatedTotal = parseInt(localStorage.getItem("total_grades_sent") || "0", 10);
+      setGradesSent(updatedTotal);
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
   const [activeTab, setActiveTab] = useState<"student" | "faculty">("student");
   const [rolePopupOpen, setRolePopupOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -1470,7 +1483,7 @@ export default function Home() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-                {[{ icon: <IconBookOpen size={16} />, label: "Attendance", val: "98.4%", color: "#3b82f6" }, { icon: <IconBuilding size={16} />, label: "Faculty Grades", val: "48/48", color: "#8b5cf6" }].map(s => (
+                {[{ icon: <IconBookOpen size={16} />, label: "Attendance", val: "98.4%", color: "#3b82f6" }, { icon: <IconBuilding size={16} />, label: "Faculty Grades", val: `${gradesSent}/48`, color: "#8b5cf6" }].map(s => (
                   <div key={s.label} style={{ ...NEO_PRESSED, padding: "12px", borderRadius: "14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", color: s.color, marginBottom: "2px" }}>
                       {s.icon}
@@ -1504,7 +1517,7 @@ export default function Home() {
       <ScrollReveal delay={0.1}>
         <section style={{ padding: "10px 1rem 32px", maxWidth: "1200px", margin: "0 auto" }}>
           <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", background: "#e0e5ec", borderRadius: "20px", boxShadow: "8px 8px 18px #a3b1c6, -8px -8px 18px #ffffff", padding: "18px 14px", textAlign: "center" }}>
-            {[{ end: enrolledCount, suffix: "", label: "Enrolled Students", sub: "Registered account", color: "#3b82f6" }, { end: 640, suffix: "+", label: "Verified Faculty", sub: "Teachers & Principals", color: "#10b981" }, { end: 48, suffix: "", label: "Faculty Grades", sub: "Synchronized", color: "#8b5cf6" }, { end: 100, suffix: "%", label: "Goal Conversion", sub: "Instant digital pass", color: "#f59e0b" }].map(s => (
+            {[{ end: enrolledCount, suffix: "", label: "Enrolled Students", sub: "Registered account", color: "#3b82f6" }, { end: 640, suffix: "+", label: "Verified Faculty", sub: "Teachers & Principals", color: "#10b981" }, { end: gradesSent, suffix: "", label: "Faculty Grades", sub: "Synchronized", color: "#8b5cf6" }, { end: 100, suffix: "%", label: "Goal Conversion", sub: "Instant digital pass", color: "#f59e0b" }].map(s => (
               <div key={s.label}>
                 <div style={{ fontSize: "1.75rem", fontWeight: "800", color: s.color, lineHeight: "1.1" }}>
                   <Counter end={s.end} suffix={s.suffix} />

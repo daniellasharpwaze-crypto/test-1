@@ -51,6 +51,13 @@ export default function FacultyGradesPage() {
   };
 
   const handleSendGrades = () => {
+    const newlySubmittedCount = Object.values(grades).filter(g => g.trim() !== "").length;
+    if (newlySubmittedCount > 0) {
+      const currentTotal = parseInt(localStorage.getItem("total_grades_sent") || "0", 10);
+      localStorage.setItem("total_grades_sent", (currentTotal + newlySubmittedCount).toString());
+      window.dispatchEvent(new Event("storage"));
+    }
+
     setSubmitted(true);
     localStorage.setItem("grades_sent", "true");
     setTimeout(() => {
