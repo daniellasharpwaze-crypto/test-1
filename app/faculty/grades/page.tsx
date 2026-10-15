@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 /* Minimal Icons */
@@ -29,7 +29,21 @@ function IconFilter() {
   );
 }
 
-const studentsData = [
+function IconSparkles() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+    </svg>
+  );
+}
+
+interface StudentItem {
+  id: string;
+  name: string;
+  course: string;
+}
+
+const baseStudentsData: StudentItem[] = [
   { id: "LRN-001", name: "Janelle Marie Gomez", course: "Advanced Mathematics" },
   { id: "LRN-002", name: "Mark Reyes", course: "Advanced Mathematics" },
   { id: "LRN-003", name: "Sophia Torres", course: "Advanced Mathematics" },
@@ -41,29 +55,223 @@ const studentsData = [
 
 export default function FacultyGradesPage() {
   const [courseFilter, setCourseFilter] = useState("Advanced Mathematics");
+  const [students, setStudents] = useState<StudentItem[]>(baseStudentsData);
   const [grades, setGrades] = useState<Record<string, string>>({});
+  const [attendance, setAttendance] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [dispatchSummary, setDispatchSummary] = useState<{ count: number; avgAttendance: string; course: string } | null>(null);
 
-  const filteredStudents = studentsData.filter(s => s.course === courseFilter);
+  // Load registered students and previously saved grades/attendance on mount
+  useEffect(() => {
+    try {
+      // 1. Merge with any dynamically registered students
+      const registered = JSON.parse(localStorage.getItem("registered_students") || "[]");
+      const mergedList = [...baseStudentsData];
+
+      if (Array.isArray(registered)) {
+        registered.forEach((st: any) => {
+          const lrn = st.studentId || st.id || "";
+          const name = st.fullName || "";
+          if (lrn && name) {
+            // Assign courses based on strand or default
+            const assignedCourse = (st.strand && st.strand.includes("STEM"))
+              ? "Advanced Mathematics"
+              : "Computer Science II";
+
+            const alreadyExists = mergedList.some(
+              item => item.id.toLowerCase() === lrn.toLowerCase() ||
+                      (item.name.toLowerCase() === name.toLowerCase() && item.course === assignedCourse)
+            );
+
+            if (!alreadyExists) {
+              mergedList.push({ id: lrn, name, course: assignedCourse });
+            }
+          }
+        });
+      }
+      setStudents(mergedList);
+
+      // 2. Load previously saved roster grades & attendance
+      const savedRoster = JSON.parse(localStorage.getItem("edusphere_grades_roster") || "{}");
+      const initialGrades: Record<string, string> = {};
+      const initialAtt: Record<string, string> = {};
+
+      mergedList.forEach(s => {
+        const key = `${s.id}_${s.course}`;
+        const record = savedRoster[key] || savedRoster[s.id];
+        if (record) {
+          if (record.grade) initialGrades[s.id] = record.grade;
+          if (record.attendance) initialAtt[s.id] = record.attendance;
+        } else {
+          // Default baseline attendance for realistic faculty roster
+          if (s.name.includes("Janelle")) {
+            initialAtt[s.id] = "98.4%";
+            initialGrades[s.id] = "95";
+          } else if (s.name.includes("Mark")) {
+            initialAtt[s.id] = "96.5%";
+            initialGrades[s.id] = "91";
+          } else if (s.name.includes("Sophia")) {
+            initialAtt[s.id] = "99.0%";
+            initialGrades[s.id] = "97";
+          } else {
+            initialAtt[s.id] = "98.0%";
+            initialGrades[s.id] = "92";
+          }
+        }
+      });
+
+      setGrades(initialGrades);
+      setAttendance(initialAtt);
+    } catch (err) {
+      console.error("Error loading saved grades:", err);
+    }
+  }, []);
+
+  const filteredStudents = students.filter(s => s.course === courseFilter);
 
   const handleGradeChange = (id: string, val: string) => {
     setGrades(prev => ({ ...prev, [id]: val }));
   };
 
+  const handleAttendanceChange = (id: string, val: string) => {
+    setAttendance(prev => ({ ...prev, [id]: val }));
+  };
+
+  const handleQuickFill = () => {
+    const updatedG = { ...grades };
+    const updatedA = { ...attendance };
+
+    filteredStudents.forEach((s, idx) => {
+      if (!updatedG[s.id] || updatedG[s.id].trim() === "") {
+        updatedG[s.id] = idx === 0 ? "96" : idx === 1 ? "92" : "94";
+      }
+      if (!updatedA[s.id] || updatedA[s.id].trim() === "") {
+        updatedA[s.id] = idx === 0 ? "98.4%" : idx === 1 ? "97.2%" : "99.1%";
+      }
+    });
+
+    setGrades(updatedG);
+    setAttendance(updatedA);
+  };
+
   const handleSendGrades = () => {
-    const newlySubmittedCount = Object.values(grades).filter(g => g.trim() !== "").length;
-    if (newlySubmittedCount > 0) {
-      const currentTotal = parseInt(localStorage.getItem("total_grades_sent") || "0", 10);
-      localStorage.setItem("total_grades_sent", (currentTotal + newlySubmittedCount).toString());
-      window.dispatchEvent(new Event("storage"));
+    // 1. Calculate submitted count and average attendance
+    let totalAttSum = 0;
+    let attCount = 0;
+    let validGradesCount = 0;
+    const submittedRecords: any[] = [];
+
+    const existingRoster = JSON.parse(localStorage.getItem("edusphere_grades_roster") || "{}");
+    const currentFaculty = JSON.parse(localStorage.getItem("current_faculty") || "{}");
+    const teacherName = currentFaculty.fullName || "Prof. Maria Elena Santos";
+
+    filteredStudents.forEach(s => {
+      const g = grades[s.id] ? grades[s.id].trim() : "";
+      const a = attendance[s.id] ? attendance[s.id].trim() : "98.4%";
+
+      if (g) validGradesCount++;
+
+      // Parse numerical percentage for attendance
+      const numMatch = a.match(/([\d.]+)/);
+      if (numMatch) {
+        totalAttSum += parseFloat(numMatch[1]);
+        attCount++;
+      }
+
+      const record = {
+        id: s.id,
+        name: s.name,
+        course: s.course,
+        grade: g || "95",
+        attendance: a.includes("%") ? a : `${a}%`,
+        teacher: teacherName,
+        dispatchedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " • " + new Date().toLocaleDateString(),
+        status: "Verified • Dispatched"
+      };
+
+      // Store by compound key and id for easy lookups
+      existingRoster[`${s.id}_${s.course}`] = record;
+      existingRoster[s.id] = record;
+
+      // Special alias: If Janelle Gomez is LRN-001 or LRN-2026-48910
+      if (s.name.toLowerCase().includes("janelle")) {
+        existingRoster["LRN-2026-48910"] = record;
+        existingRoster["LRN-2026-48910_Advanced Mathematics"] = record;
+        existingRoster["LRN-001"] = record;
+      }
+
+      submittedRecords.push(record);
+    });
+
+    const avgAttendanceNum = attCount > 0 ? (totalAttSum / attCount).toFixed(1) : "98.4";
+    const avgAttendanceStr = `${avgAttendanceNum}%`;
+
+    // 2. Persist updated roster and accurate attendance
+    localStorage.setItem("edusphere_grades_roster", JSON.stringify(existingRoster));
+    localStorage.setItem("edusphere_campus_attendance", avgAttendanceStr);
+
+    // Save accurate Janelle / logged in student attendance
+    const janelleRecord = submittedRecords.find(r => r.name.toLowerCase().includes("janelle"));
+    if (janelleRecord) {
+      localStorage.setItem("edusphere_student_attendance", janelleRecord.attendance);
+    } else {
+      localStorage.setItem("edusphere_student_attendance", avgAttendanceStr);
     }
 
+    // 3. Update total grades count
+    const totalGrades = Object.values(existingRoster).filter((r: any) => r.grade && r.course).length;
+    localStorage.setItem("total_grades_sent", totalGrades.toString());
+
+    // 4. Create and dispatch structured notification
+    const newNotification = {
+      id: `notif-${Date.now()}`,
+      type: "grades_sent",
+      title: "Official Grades & Attendance Released",
+      message: `${teacherName} has sent official grades and attendance for ${courseFilter}.`,
+      course: courseFilter,
+      teacher: teacherName,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toLocaleDateString(),
+      unread: true,
+      avgAttendance: avgAttendanceStr,
+      count: validGradesCount || filteredStudents.length
+    };
+
+    // Save latest notification
+    localStorage.setItem("edusphere_latest_notification", JSON.stringify(newNotification));
+
+    // Save into notifications history list
+    const existingNotifs = JSON.parse(localStorage.getItem("edusphere_notifications_list") || "[]");
+    const updatedNotifs = [newNotification, ...existingNotifs.filter((n: any) => n.id !== newNotification.id)].slice(0, 15);
+    localStorage.setItem("edusphere_notifications_list", JSON.stringify(updatedNotifs));
+
+    // Trigger cross-page storage flag
+    localStorage.setItem("grades_sent", Date.now().toString());
+
+    // 5. Broadcast to any open windows / tabs using BroadcastChannel and custom DOM event
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("edusphere_portal");
+        bc.postMessage({ type: "GRADES_SENT", notification: newNotification });
+        bc.close();
+      }
+    } catch (e) {
+      console.warn("BroadcastChannel not supported", e);
+    }
+
+    window.dispatchEvent(new Event("storage"));
+    window.dispatchEvent(new CustomEvent("edusphere_grade_dispatched", { detail: newNotification }));
+
+    setDispatchSummary({
+      count: validGradesCount || filteredStudents.length,
+      avgAttendance: avgAttendanceStr,
+      course: courseFilter
+    });
     setSubmitted(true);
-    localStorage.setItem("grades_sent", "true");
+
     setTimeout(() => {
       setSubmitted(false);
-      setGrades({});
-    }, 3000);
+    }, 4000);
   };
 
   const iStyle: React.CSSProperties = {
@@ -97,26 +305,46 @@ export default function FacultyGradesPage() {
 
   return (
     <div style={{ background: "#e0e5ec", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Outfit',sans-serif", color: "#2d3561" }}>
-      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "860px", margin: "0 auto" }}>
         
         <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "#475569", fontWeight: "700", fontSize: "0.9rem", marginBottom: "30px", padding: "8px 16px", borderRadius: "20px", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff" }}>
           <IconArrowLeft /> Back to Dashboard
         </Link>
 
         <div style={{ background: "#e0e5ec", borderRadius: "24px", boxShadow: "10px 10px 22px #a3b1c6, -10px -10px 22px #ffffff", padding: "32px" }}>
-          <h1 style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 8px" }}>Grade Management</h1>
-          <p style={{ fontSize: "0.9rem", color: "#64748b", margin: "0 0 24px", lineHeight: "1.6" }}>
-            Select a course to view enrolled students and securely issue their grades.
-          </p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "8px" }}>
+            <div>
+              <h1 style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 6px" }}>Faculty Grade & Attendance Manager</h1>
+              <p style={{ fontSize: "0.9rem", color: "#64748b", margin: 0, lineHeight: "1.6" }}>
+                Enter accurate final grades and verified attendance rates. Dispatching immediately notifies enrolled students and updates campus analytics.
+              </p>
+            </div>
+            
+            <button
+              type="button"
+              onClick={handleQuickFill}
+              style={{
+                ...minBtnStyle,
+                background: "#e0e5ec",
+                color: "#8b5cf6",
+                boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff",
+                fontSize: "0.82rem",
+                padding: "8px 16px"
+              }}
+            >
+              <IconSparkles /> Auto-fill Defaults
+            </button>
+          </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+          {/* Course Filter Bar */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "24px 0 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#8b5cf6", fontWeight: "700" }}>
               <IconFilter /> Filter by Course:
             </div>
             <select 
               value={courseFilter} 
               onChange={e => setCourseFilter(e.target.value)}
-              style={{ ...iStyle, width: "auto", minWidth: "220px", cursor: "pointer" }}
+              style={{ ...iStyle, width: "auto", minWidth: "240px", cursor: "pointer", fontWeight: "600" }}
             >
               <option value="Advanced Mathematics">Advanced Mathematics</option>
               <option value="Physics 101">Physics 101</option>
@@ -124,29 +352,63 @@ export default function FacultyGradesPage() {
             </select>
           </div>
 
+          {/* Roster Table */}
           <div style={{ background: "#e0e5ec", borderRadius: "16px", boxShadow: "inset 4px 4px 10px #a3b1c6, inset -4px -4px 10px #ffffff", padding: "20px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: "10px", borderBottom: "1px solid rgba(163,177,198,0.3)", paddingBottom: "10px", marginBottom: "10px", fontWeight: "800", color: "#1e293b", fontSize: "0.85rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", borderBottom: "1px solid rgba(163,177,198,0.3)", paddingBottom: "12px", marginBottom: "12px", fontWeight: "800", color: "#1e293b", fontSize: "0.82rem" }}>
               <div>Student ID</div>
-              <div>Name</div>
-              <div>Final Grade</div>
+              <div>Student Name</div>
+              <div style={{ textAlign: "center" }}>Attendance Rate</div>
+              <div style={{ textAlign: "center" }}>Final Grade</div>
+              <div style={{ textAlign: "center" }}>Status</div>
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {filteredStudents.length > 0 ? filteredStudents.map(s => (
-                <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: "10px", alignItems: "center" }}>
-                  <div style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600" }}>{s.id}</div>
-                  <div style={{ fontSize: "0.9rem", fontWeight: "700", color: "#334155" }}>{s.name}</div>
-                  <div>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. 95 or A" 
-                      value={grades[s.id] || ""}
-                      onChange={e => handleGradeChange(s.id, e.target.value)}
-                      style={{ ...iStyle, padding: "8px 12px", textAlign: "center" }}
-                    />
+              {filteredStudents.length > 0 ? filteredStudents.map(s => {
+                const hasGrade = !!(grades[s.id] && grades[s.id].trim());
+                const attVal = attendance[s.id] || "98.4%";
+
+                return (
+                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", alignItems: "center" }}>
+                    <div style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: "700" }}>{s.id}</div>
+                    <div style={{ fontSize: "0.88rem", fontWeight: "700", color: "#334155" }}>
+                      {s.name}
+                      {s.name.includes("Janelle") && (
+                        <span style={{ marginLeft: "6px", fontSize: "0.68rem", background: "rgba(59,130,246,0.12)", color: "#2563eb", padding: "2px 6px", borderRadius: "8px", fontWeight: "700" }}>Demo Account</span>
+                      )}
+                    </div>
+                    <div>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. 98.4%" 
+                        value={attendance[s.id] ?? "98.4%"}
+                        onChange={e => handleAttendanceChange(s.id, e.target.value)}
+                        style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#0284c7" }}
+                      />
+                    </div>
+                    <div>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. 95 or A" 
+                        value={grades[s.id] || ""}
+                        onChange={e => handleGradeChange(s.id, e.target.value)}
+                        style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#10b981" }}
+                      />
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <span style={{
+                        fontSize: "0.72rem",
+                        fontWeight: "700",
+                        padding: "4px 8px",
+                        borderRadius: "12px",
+                        background: hasGrade ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.15)",
+                        color: hasGrade ? "#059669" : "#64748b"
+                      }}>
+                        {hasGrade ? "Ready" : "Pending"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div style={{ textAlign: "center", padding: "20px", color: "#64748b", fontSize: "0.9rem" }}>
                   No students found for this course.
                 </div>
@@ -154,7 +416,12 @@ export default function FacultyGradesPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: "30px", display: "flex", justifyContent: "flex-end" }}>
+          {/* Action Row */}
+          <div style={{ marginTop: "28px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "600" }}>
+              💡 Dispatching syncs live attendance & grades to students and broadcasts an immediate alert.
+            </div>
+
             <button
               type="button"
               onClick={handleSendGrades}
@@ -162,21 +429,24 @@ export default function FacultyGradesPage() {
                 ...minBtnStyle,
                 background: "linear-gradient(135deg, #10b981, #059669)",
                 color: "white",
-                boxShadow: "4px 4px 12px rgba(16,185,129,0.3)"
+                boxShadow: "4px 4px 12px rgba(16,185,129,0.35)",
+                padding: "12px 26px",
+                fontSize: "0.94rem"
               }}
             >
-              <IconCheck /> Dispatch Grades to Portal
+              <IconCheck /> Dispatch Grades & Attendance
             </button>
           </div>
         </div>
       </div>
 
+      {/* Confirmation Toast */}
       {submitted && (
         <div style={{
           position: "fixed",
           bottom: "24px",
           right: "24px",
-          background: "#10b981",
+          background: "linear-gradient(135deg, #10b981, #059669)",
           color: "white",
           padding: "16px 24px",
           borderRadius: "16px",
@@ -187,11 +457,18 @@ export default function FacultyGradesPage() {
           zIndex: 9999,
           animation: "slideIn 0.3s ease-out"
         }}>
-          <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "50%", padding: "4px" }}>
+          <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "50%", padding: "6px", display: "flex" }}>
             <IconCheck />
           </div>
-          <div style={{ fontWeight: "700", fontSize: "0.95rem", fontFamily: "'Outfit',sans-serif" }}>
-            Grades have been sent successfully!
+          <div>
+            <div style={{ fontWeight: "800", fontSize: "0.95rem", fontFamily: "'Outfit',sans-serif" }}>
+              Grades & Attendance Dispatched!
+            </div>
+            {dispatchSummary && (
+              <div style={{ fontSize: "0.78rem", opacity: 0.9, marginTop: "2px" }}>
+                Sent for {dispatchSummary.course} (Avg. Attendance: {dispatchSummary.avgAttendance})
+              </div>
+            )}
           </div>
         </div>
       )}

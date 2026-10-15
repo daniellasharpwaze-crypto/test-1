@@ -14,7 +14,11 @@ export const metadata: Metadata = {
     "Premium website development tailored for social media marketing (SMM) agencies and brands. We build high-converting, visually stunning web experiences that amplify your digital presence.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en" className={outfit.variable}>
       <body>{children}</body>
