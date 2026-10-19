@@ -64,6 +64,11 @@ export default function FacultyGradesPage() {
   const [submitted, setSubmitted] = useState(false);
   const [dispatchSummary, setDispatchSummary] = useState<{ count: number; avgAttendance: string; course: string } | null>(null);
 
+  /* Faculty Campus Announcement Broadcast */
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementMsg, setAnnouncementMsg] = useState("");
+  const [announcementSent, setAnnouncementSent] = useState(false);
+
   // Load registered students and previously saved grades/attendance on mount
   useEffect(() => {
     try {
@@ -485,6 +490,80 @@ export default function FacultyGradesPage() {
             >
               <IconCheck /> Dispatch Grades & Attendance
             </button>
+          </div>
+        </div>
+
+        {/* Feature 4: Faculty Announcement Broadcast Tool */}
+        <div style={{ marginTop: "28px", background: "var(--neu-card)", borderRadius: "24px", boxShadow: "var(--neu-shadow-float)", border: "1px solid var(--border-card)", padding: "30px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+              📢
+            </div>
+            <div>
+              <h2 style={{ fontSize: "1.3rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>
+                Broadcast Campus Announcement
+              </h2>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>
+                Send real-time alerts directly to all students' notifications bell & popups via Firebase Firestore.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "18px" }}>
+            <input
+              type="text"
+              placeholder="Announcement Subject (e.g. Science Fair Submission Deadline Extended)"
+              value={announcementTitle}
+              onChange={e => setAnnouncementTitle(e.target.value)}
+              style={iStyle}
+            />
+            <textarea
+              placeholder="Write the full message or classroom advisory for students..."
+              value={announcementMsg}
+              onChange={e => setAnnouncementMsg(e.target.value)}
+              rows={3}
+              style={{ ...iStyle, resize: "vertical" }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "12px" }}>
+              {announcementSent && (
+                <span style={{ color: "#10b981", fontWeight: "700", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                  <IconCheck /> Announcement broadcasted to campus!
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!announcementTitle.trim() || !announcementMsg.trim()) {
+                    alert("Please enter both a title and message.");
+                    return;
+                  }
+                  const currentFaculty = JSON.parse(localStorage.getItem("current_faculty") || "{}");
+                  const teacherName = currentFaculty.fullName || "Verified Faculty";
+                  const notifPayload = {
+                    title: `📢 ${announcementTitle.trim()}`,
+                    message: announcementMsg.trim(),
+                    course: courseFilter,
+                    teacher: teacherName,
+                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                    unread: true
+                  };
+                  await sendNotificationToFirebase(notifPayload);
+                  setAnnouncementSent(true);
+                  setAnnouncementTitle("");
+                  setAnnouncementMsg("");
+                  setTimeout(() => setAnnouncementSent(false), 5000);
+                }}
+                style={{
+                  ...minBtnStyle,
+                  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                  color: "white",
+                  boxShadow: "3px 3px 10px rgba(37,99,235,0.35)",
+                  padding: "10px 24px"
+                }}
+              >
+                📢 Broadcast to Students
+              </button>
+            </div>
           </div>
         </div>
       </div>

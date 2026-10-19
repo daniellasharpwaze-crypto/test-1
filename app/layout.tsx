@@ -9,9 +9,9 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "WebSMM Studio — Website Development for Social Media Marketing",
+  title: "EduSphere — Unified Campus Network & Student Portal",
   description:
-    "Premium website development tailored for social media marketing (SMM) agencies and brands. We build high-converting, visually stunning web experiences that amplify your digital presence.",
+    "Next-generation digital campus portal for students, faculty, and administration. Instant pass issuance, real-time grade telemetry, attendance tracking, and student safety.",
 };
 
 export default function RootLayout({

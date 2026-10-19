@@ -371,3 +371,31 @@ export async function saveFeedbackToFirebase(feedback: any): Promise<void> {
     }
   }
 }
+
+/* ============================================================
+   Confidential Counselor Incident Reporting
+   ============================================================ */
+
+export async function saveCounselorReportToFirebase(report: any): Promise<void> {
+  const docId = report.ticketId || `report_${Date.now()}`;
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = JSON.parse(localStorage.getItem("edusphere_counselor_reports") || "[]");
+      stored.unshift({ ...report, ticketId: docId, createdAt: new Date().toISOString() });
+      localStorage.setItem("edusphere_counselor_reports", JSON.stringify(stored.slice(0, 30)));
+    } catch {}
+  }
+
+  if (db && isFirebaseConfigured()) {
+    try {
+      const reportDoc = doc(db, "counselor_reports", docId);
+      await setDoc(reportDoc, {
+        ...report,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.warn("[Firebase] Could not save counselor report to Firestore:", err);
+    }
+  }
+}

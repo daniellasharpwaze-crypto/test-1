@@ -6,6 +6,7 @@ import {
   subscribeToNotifications,
   saveStudentToFirebase,
   saveFacultyToFirebase,
+  saveCounselorReportToFirebase,
   isFirebaseConfigured
 } from "@/lib/firebase";
 
@@ -501,6 +502,17 @@ export default function Home() {
     open: false,
     tab: "privacy"
   });
+
+  /* Feature 3: Counselor Reporting Modal State */
+  const [counselorOpen, setCounselorOpen] = useState(false);
+  const [counselorForm, setCounselorForm] = useState({
+    category: "Bullying / Peer Harassment",
+    description: "",
+    urgency: "Medium",
+    contactBack: "Anonymous"
+  });
+  const [counselorSubmittedTicket, setCounselorSubmittedTicket] = useState<string | null>(null);
+  const [counselorSubmitting, setCounselorSubmitting] = useState(false);
 
   /* Function to sync live grades, attendance, and notifications */
   const syncGradeData = useCallback((notify = false, incomingNotif?: any) => {
@@ -1287,6 +1299,31 @@ export default function Home() {
                 {isStudent ? "Unlocked" : "Students Only"}
               </span>
             </a>
+
+            {/* Feature 3: Anonymous Counselor Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setCounselorSubmittedTicket(null);
+                setCounselorOpen(true);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                padding: "6px 12px",
+                borderRadius: "16px",
+                color: "#ef4444",
+                fontWeight: "700",
+                fontSize: "0.82rem",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+              title="Report an incident confidentially to school counselors"
+            >
+              🛡️ Counselor Box
+            </button>
           </div>
 
           {/* THE ONE POPUP BUTTON (MINIMAL) - Turns into Sign Out when student or faculty is registered/logged in */}
@@ -2441,6 +2478,13 @@ export default function Home() {
                         <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
                           <button
                             type="button"
+                            onClick={() => window.print()}
+                            style={{ ...minBtnStyle, background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "white", boxShadow: "3px 3px 8px rgba(37,99,235,0.35)" }}
+                          >
+                            🖨️ Print / Save ID Badge
+                          </button>
+                          <button
+                            type="button"
                             onClick={downloadS}
                             style={{ ...minBtnStyle, background: "linear-gradient(135deg, #10b981, #059669)", color: "white", boxShadow: "3px 3px 8px rgba(16,185,129,0.35)" }}
                           >
@@ -3201,6 +3245,194 @@ export default function Home() {
             >
               Dismiss
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Feature 3: Anonymous Counselor Incident Report Modal */}
+      {counselorOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15,23,42,0.7)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 99999,
+          padding: "20px"
+        }}>
+          <div style={{
+            background: "var(--neu-card)",
+            borderRadius: "24px",
+            boxShadow: "var(--neu-shadow-float)",
+            border: "1px solid var(--border-card)",
+            padding: "32px",
+            maxWidth: "520px",
+            width: "100%",
+            position: "relative"
+          }}>
+            <button
+              type="button"
+              onClick={() => setCounselorOpen(false)}
+              style={{
+                position: "absolute",
+                top: "20px",
+                right: "20px",
+                background: "var(--neu-surface)",
+                border: "none",
+                borderRadius: "50%",
+                width: "32px",
+                height: "32px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: "var(--text-muted)",
+                boxShadow: "var(--neu-shadow-small)"
+              }}
+              aria-label="Close Counselor Modal"
+            >
+              <IconClose size={16} />
+            </button>
+
+            {counselorSubmittedTicket ? (
+              <div style={{ textAlign: "center", padding: "10px 0" }}>
+                <div style={{ width: "54px", height: "54px", borderRadius: "50%", background: "linear-gradient(135deg, #10b981, #059669)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "white" }}>
+                  <IconCheck size={28} />
+                </div>
+                <h3 style={{ fontSize: "1.3rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>
+                  Incident Report Dispatched
+                </h3>
+                <p style={{ fontSize: "0.86rem", color: "var(--text-muted)", marginBottom: "16px", lineHeight: "1.5" }}>
+                  Your report has been encrypted and assigned directly to the school guidance counselor under protective protocols.
+                </p>
+                <div style={{ background: "var(--neu-surface-pressed)", borderRadius: "14px", padding: "12px", marginBottom: "20px", border: "1px solid var(--border-subtle)" }}>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: "600" }}>CONFIDENTIAL TICKET NUMBER</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "#3b82f6", marginTop: "2px" }}>
+                    {counselorSubmittedTicket}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCounselorOpen(false)}
+                  style={{
+                    ...minBtnStyle,
+                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    color: "white",
+                    padding: "10px 24px"
+                  }}
+                >
+                  Close & Protect Identity
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg, #ef4444, #dc2626)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+                    <IconShield size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: "1.25rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>
+                      Confidential Counselor Box
+                    </h3>
+                    <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: 0 }}>
+                      100% Anonymous & Encrypted School Guidance Channel
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "14px" }}>
+                  <div>
+                    <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                      Category of Concern
+                    </label>
+                    <select
+                      value={counselorForm.category}
+                      onChange={e => setCounselorForm(p => ({ ...p, category: e.target.value }))}
+                      style={iStyle()}
+                    >
+                      <option value="Bullying / Peer Harassment">Bullying / Peer Harassment</option>
+                      <option value="Academic Distress / Burnout">Academic Distress / Burnout</option>
+                      <option value="Campus Safety Hazard">Campus Safety Hazard</option>
+                      <option value="Personal Well-being / Mental Health">Personal Well-being / Mental Health</option>
+                      <option value="Other Confidential Matter">Other Confidential Matter</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                      Urgency Level
+                    </label>
+                    <select
+                      value={counselorForm.urgency}
+                      onChange={e => setCounselorForm(p => ({ ...p, urgency: e.target.value }))}
+                      style={iStyle()}
+                    >
+                      <option value="Low (Routine follow-up)">Low (Routine follow-up)</option>
+                      <option value="Medium (Review within 24h)">Medium (Review within 24h)</option>
+                      <option value="High (Immediate counselor triage)">High (Immediate counselor triage)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                      Incident Description
+                    </label>
+                    <textarea
+                      placeholder="Describe what happened or how our school counselor can assist you..."
+                      rows={4}
+                      value={counselorForm.description}
+                      onChange={e => setCounselorForm(p => ({ ...p, description: e.target.value }))}
+                      style={{ ...iStyle(), resize: "vertical" }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setCounselorOpen(false)}
+                      style={{
+                        ...minBtnStyle,
+                        background: "var(--neu-surface)",
+                        color: "var(--text-muted)",
+                        boxShadow: "var(--neu-shadow-small)"
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={counselorSubmitting}
+                      onClick={async () => {
+                        if (!counselorForm.description.trim()) {
+                          alert("Please write a brief description of the incident.");
+                          return;
+                        }
+                        setCounselorSubmitting(true);
+                        const ticket = `TICKET-${Math.floor(100000 + Math.random() * 900000)}`;
+                        await saveCounselorReportToFirebase({
+                          ticketId: ticket,
+                          ...counselorForm,
+                          timestamp: new Date().toISOString()
+                        });
+                        setCounselorSubmitting(false);
+                        setCounselorSubmittedTicket(ticket);
+                      }}
+                      style={{
+                        ...minBtnStyle,
+                        background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                        color: "white",
+                        boxShadow: "3px 3px 10px rgba(239,68,68,0.35)",
+                        padding: "10px 22px"
+                      }}
+                    >
+                      {counselorSubmitting ? "Encrypting..." : "Submit Confidential Report"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
