@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { saveFeedbackToFirebase } from "@/lib/firebase";
 
 /* Minimal Icons */
 function IconArrowLeft() {
@@ -40,6 +41,21 @@ function IconSend() {
 
 export default function FeedbackPage() {
   const [role, setRole] = useState<"student" | "faculty">("student");
+
+  /* Theme Initialization */
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("edusphere_theme");
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (saved === "dark" || (!saved && prefersDark)) {
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+        document.documentElement.classList.remove("dark");
+      }
+    } catch (e) {}
+  }, []);
   const [form, setForm] = useState({ subject: "", message: "", category: "Academic Modules" });
   const [submitted, setSubmitted] = useState(false);
   const [feedbackList, setFeedbackList] = useState([
@@ -95,6 +111,9 @@ export default function FeedbackPage() {
     };
     setFeedbackList(prev => [newEntry, ...prev]);
     setSubmitted(true);
+    try {
+      saveFeedbackToFirebase(newEntry);
+    } catch {}
     setTimeout(() => {
       setSubmitted(false);
       setForm({ subject: "", message: "", category: "Academic Modules" });
@@ -105,12 +124,12 @@ export default function FeedbackPage() {
     width: "100%",
     padding: "12px 14px",
     borderRadius: "12px",
-    border: "1px solid rgba(163,177,198,0.25)",
-    background: "#e0e5ec",
-    boxShadow: "inset 2px 2px 5px #a3b1c6, inset -2px -2px 5px #ffffff",
+    border: "1px solid var(--border-subtle)",
+    background: "var(--neu-input)",
+    boxShadow: "var(--neu-shadow-input)",
     fontFamily: "'Outfit',sans-serif",
     fontSize: "0.92rem",
-    color: "#1e293b",
+    color: "var(--text-title)",
     outline: "none",
     boxSizing: "border-box" as const,
     minHeight: "44px"
@@ -139,17 +158,17 @@ export default function FeedbackPage() {
       case "Resolved": return { bg: "rgba(16,185,129,0.12)", text: "#10b981" };
       case "In Review": return { bg: "rgba(245,158,11,0.12)", text: "#f59e0b" };
       case "Submitted": return { bg: "rgba(59,130,246,0.12)", text: "#3b82f6" };
-      default: return { bg: "rgba(100,116,139,0.12)", text: "#64748b" };
+      default: return { bg: "rgba(100,116,139,0.12)", text: "var(--text-muted)" };
     }
   };
 
   return (
-    <div style={{ background: "#e0e5ec", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Outfit',sans-serif", color: "#2d3561" }}>
+    <div style={{ background: "var(--neu-surface)", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Outfit',sans-serif", color: "var(--text-body)" }}>
       <div style={{ maxWidth: "860px", margin: "0 auto" }}>
         
         {/* Top Header Navigation */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "26px", flexWrap: "wrap", gap: "10px" }}>
-          <Link href="/" style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#475569" }}>
+          <Link href="/" style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}>
             <IconArrowLeft /> Back to Portal
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -161,17 +180,17 @@ export default function FeedbackPage() {
 
         {/* RESTRICTED ACCESS SCREEN FOR ADMIN/FACULTY */}
         {!isStudentRole ? (
-          <div style={{ background: "#e0e5ec", borderRadius: "24px", boxShadow: "10px 10px 22px #a3b1c6, -10px -10px 22px #ffffff", padding: "48px 32px", textAlign: "center" }}>
+          <div style={{ background: "var(--neu-surface)", borderRadius: "24px", boxShadow: "var(--neu-shadow-float)", padding: "48px 32px", textAlign: "center" }}>
             <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "rgba(139,92,246,0.15)", color: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
               <IconShield />
             </div>
-            <div style={{ display: "inline-block", padding: "3px 12px", borderRadius: "12px", background: "#e0e5ec", boxShadow: "inset 2px 2px 4px #a3b1c6, inset -2px -2px 4px #ffffff", fontSize: "0.72rem", fontWeight: "800", color: "#8b5cf6", textTransform: "uppercase", marginBottom: "12px" }}>
+            <div style={{ display: "inline-block", padding: "3px 12px", borderRadius: "12px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-input)", fontSize: "0.72rem", fontWeight: "800", color: "#8b5cf6", textTransform: "uppercase", marginBottom: "12px" }}>
               Student Authorization Required
             </div>
-            <h1 style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 10px" }}>
+            <h1 style={{ fontSize: "2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 10px" }}>
               Feedback Portal is for Students Only
             </h1>
-            <p style={{ fontSize: "0.92rem", color: "#64748b", margin: "0 auto 26px", maxWidth: "480px", lineHeight: "1.7" }}>
+            <p style={{ fontSize: "0.92rem", color: "var(--text-muted)", margin: "0 auto 26px", maxWidth: "480px", lineHeight: "1.7" }}>
               The feedback portal allows students to share their thoughts, report issues, and suggest improvements. Faculty and admins can view aggregated reports through the admin dashboard instead.
             </p>
 
@@ -180,9 +199,9 @@ export default function FeedbackPage() {
                 href="/"
                 style={{
                   ...minBtnStyle,
-                  background: "#e0e5ec",
-                  boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff",
-                  color: "#475569"
+                  background: "var(--neu-surface)",
+                  boxShadow: "var(--neu-shadow-small)",
+                  color: "var(--text-muted)"
                 }}
               >
                 Return to Dashboard
@@ -193,34 +212,34 @@ export default function FeedbackPage() {
           /* STUDENT FEEDBACK PORTAL */
           <div>
             {/* Header Card */}
-            <div style={{ background: "#e0e5ec", borderRadius: "24px", boxShadow: "10px 10px 22px #a3b1c6, -10px -10px 22px #ffffff", padding: "28px 32px", marginBottom: "20px" }}>
+            <div style={{ background: "var(--neu-surface)", borderRadius: "24px", boxShadow: "var(--neu-shadow-float)", padding: "28px 32px", marginBottom: "20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 14px", borderRadius: "12px", background: "#e0e5ec", boxShadow: "inset 2px 2px 4px #a3b1c6, inset -2px -2px 4px #ffffff", fontSize: "0.72rem", fontWeight: "800", color: "#3b82f6", textTransform: "uppercase", marginBottom: "8px" }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 14px", borderRadius: "12px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-input)", fontSize: "0.72rem", fontWeight: "800", color: "#3b82f6", textTransform: "uppercase", marginBottom: "8px" }}>
                     🎓 Student Feedback Portal
                   </div>
-                  <h1 style={{ fontSize: "1.75rem", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>
+                  <h1 style={{ fontSize: "1.75rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 4px" }}>
                     Share Your Feedback
                   </h1>
-                  <p style={{ fontSize: "0.86rem", color: "#64748b", margin: 0 }}>
+                  <p style={{ fontSize: "0.86rem", color: "var(--text-muted)", margin: 0 }}>
                     Help us improve your learning experience. Your voice matters!
                   </p>
                 </div>
 
                 {/* Quick Stats */}
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  <div style={{ background: "#e0e5ec", borderRadius: "14px", padding: "10px 18px", boxShadow: "inset 3px 3px 6px #a3b1c6, inset -3px -3px 6px #ffffff", textAlign: "center", minWidth: "80px" }}>
-                    <div style={{ fontSize: "0.65rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Total</div>
+                  <div style={{ background: "var(--neu-surface)", borderRadius: "14px", padding: "10px 18px", boxShadow: "var(--neu-shadow-pressed)", textAlign: "center", minWidth: "80px" }}>
+                    <div style={{ fontSize: "0.65rem", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>Total</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "#3b82f6" }}>{feedbackList.length}</div>
                   </div>
-                  <div style={{ background: "#e0e5ec", borderRadius: "14px", padding: "10px 18px", boxShadow: "inset 3px 3px 6px #a3b1c6, inset -3px -3px 6px #ffffff", textAlign: "center", minWidth: "80px" }}>
-                    <div style={{ fontSize: "0.65rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Pending</div>
+                  <div style={{ background: "var(--neu-surface)", borderRadius: "14px", padding: "10px 18px", boxShadow: "var(--neu-shadow-pressed)", textAlign: "center", minWidth: "80px" }}>
+                    <div style={{ fontSize: "0.65rem", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>Pending</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "#f59e0b" }}>
                       {feedbackList.filter(f => f.status === "In Review" || f.status === "Submitted").length}
                     </div>
                   </div>
-                  <div style={{ background: "#e0e5ec", borderRadius: "14px", padding: "10px 18px", boxShadow: "inset 3px 3px 6px #a3b1c6, inset -3px -3px 6px #ffffff", textAlign: "center", minWidth: "80px" }}>
-                    <div style={{ fontSize: "0.65rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Resolved</div>
+                  <div style={{ background: "var(--neu-surface)", borderRadius: "14px", padding: "10px 18px", boxShadow: "var(--neu-shadow-pressed)", textAlign: "center", minWidth: "80px" }}>
+                    <div style={{ fontSize: "0.65rem", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>Resolved</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "#10b981" }}>
                       {feedbackList.filter(f => f.status === "Resolved").length}
                     </div>
@@ -233,8 +252,8 @@ export default function FeedbackPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", alignItems: "start" }}>
 
               {/* Left Column: Submit Feedback Form */}
-              <div style={{ background: "#e0e5ec", borderRadius: "20px", padding: "24px", boxShadow: "8px 8px 18px #a3b1c6, -8px -8px 18px #ffffff" }}>
-                <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "#1e293b", margin: "0 0 4px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ background: "var(--neu-surface)", borderRadius: "20px", padding: "24px", boxShadow: "var(--neu-shadow-flat)" }}>
+                <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 4px", display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "1.1rem" }}>📝</span> Submit Feedback
                 </h3>
                 <p style={{ fontSize: "0.78rem", color: "#94a3b8", margin: "0 0 16px" }}>
@@ -242,7 +261,7 @@ export default function FeedbackPage() {
                 </p>
                 <form onSubmit={handleSubmitFeedback} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Category</label>
+                    <label style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--text-muted)", display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Category</label>
                     <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={iStyle}>
                       <option>Academic Modules</option>
                       <option>Campus Safety</option>
@@ -252,7 +271,7 @@ export default function FeedbackPage() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Subject</label>
+                    <label style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--text-muted)", display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Subject</label>
                     <input
                       type="text"
                       placeholder="What's this about?"
@@ -263,7 +282,7 @@ export default function FeedbackPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Message</label>
+                    <label style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--text-muted)", display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Message</label>
                     <textarea
                       placeholder="Tell us more details..."
                       value={form.message}
@@ -291,7 +310,7 @@ export default function FeedbackPage() {
               {/* Right Column: Feedback Submissions List */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                  <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "#1e293b", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                  <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "var(--text-title)", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ fontSize: "1.1rem" }}>📋</span> Recent Submissions
                   </h3>
                   <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontWeight: "600" }}>
@@ -306,7 +325,7 @@ export default function FeedbackPage() {
                       <div
                         key={item.id}
                         style={{
-                          background: "#e0e5ec",
+                          background: "var(--neu-surface)",
                           borderRadius: "16px",
                           padding: "16px 16px 16px 20px",
                           boxShadow: "4px 4px 10px #a3b1c6, -4px -4px 10px #ffffff",
@@ -325,12 +344,12 @@ export default function FeedbackPage() {
                         </div>
 
                         {/* Subject */}
-                        <div style={{ fontWeight: "800", fontSize: "0.9rem", color: "#1e293b", marginBottom: "4px", lineHeight: "1.3" }}>
+                        <div style={{ fontWeight: "800", fontSize: "0.9rem", color: "var(--text-title)", marginBottom: "4px", lineHeight: "1.3" }}>
                           {item.subject}
                         </div>
 
                         {/* Message */}
-                        <p style={{ fontSize: "0.78rem", color: "#475569", margin: "0 0 10px", lineHeight: "1.55" }}>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0 0 10px", lineHeight: "1.55" }}>
                           {item.message}
                         </p>
 

@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import {
+  subscribeToGrades,
+  subscribeToNotifications,
+  saveStudentToFirebase,
+  saveFacultyToFirebase,
+  isFirebaseConfigured
+} from "@/lib/firebase";
 
 /* ===== ICONS ===== */
 function IconGraduationCap({ size = 18 }: { size?: number }) {
@@ -332,19 +339,20 @@ function ScrollReveal({ children, delay = 0, direction = "up" }: { children: Rea
 }
 
 /* ===== HELPERS & MINIMAL BUTTON STYLES ===== */
-const NEO_FLAT = { background: "#e0e5ec", boxShadow: "6px 6px 14px #a3b1c6, -6px -6px 14px #ffffff" };
-const NEO_PRESSED = { background: "#e0e5ec", boxShadow: "inset 3px 3px 6px #a3b1c6, inset -3px -3px 6px #ffffff" };
+const NEO_FLAT = { background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-flat)", border: "1px solid var(--border-subtle)" };
+const NEO_PRESSED = { background: "var(--neu-surface-pressed)", boxShadow: "var(--neu-shadow-pressed)", border: "1px solid var(--border-subtle)" };
+const NEO_FLOAT = { background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-float)", border: "1px solid var(--border-subtle)" };
 
 const iStyle = (err = false): React.CSSProperties => ({
   width: "100%",
   padding: "12px 14px",
   borderRadius: "12px",
-  border: err ? "2px solid #ef4444" : "1px solid rgba(163,177,198,0.2)",
-  background: "#e0e5ec",
-  boxShadow: "inset 2px 2px 5px #a3b1c6, inset -2px -2px 5px #ffffff",
+  border: err ? "2px solid #ef4444" : "1px solid var(--border-subtle)",
+  background: "var(--neu-input)",
+  boxShadow: "var(--neu-shadow-input)",
   fontFamily: "'Outfit',sans-serif",
   fontSize: "0.92rem",
-  color: "#1e293b",
+  color: "var(--text-title)",
   outline: "none",
   boxSizing: "border-box" as const,
   minHeight: "44px"
@@ -368,6 +376,42 @@ const minBtnStyle: React.CSSProperties = {
 };
 
 export default function Home() {
+  /* Theme State (Light & Dark) */
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("edusphere_theme");
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (saved === "dark" || (!saved && prefersDark)) {
+        setIsDark(true);
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.classList.add("dark");
+      } else {
+        setIsDark(false);
+        document.documentElement.removeAttribute("data-theme");
+        document.documentElement.classList.remove("dark");
+      }
+    } catch (e) {}
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark(prev => {
+      const next = !prev;
+      try {
+        if (next) {
+          document.documentElement.setAttribute("data-theme", "dark");
+          document.documentElement.classList.add("dark");
+          localStorage.setItem("edusphere_theme", "dark");
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+          document.documentElement.classList.remove("dark");
+          localStorage.setItem("edusphere_theme", "light");
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
   const [activeTab, setActiveTab] = useState<"student" | "faculty">("student");
   const [rolePopupOpen, setRolePopupOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -504,9 +548,33 @@ export default function Home() {
     }
   }, []);
 
-  /* Listen for Grades Sent & Live Attendance from Faculty across all channels */
+  /* Listen for Grades Sent & Live Attendance from Faculty across all channels (Firebase + Local) */
   useEffect(() => {
     syncGradeData(false);
+
+    // 1. Realtime Firebase Firestore Subscriptions
+    const unsubFirebaseGrades = subscribeToGrades((roster) => {
+      setGradesRoster(roster);
+      const count = Object.keys(roster).length;
+      if (count > 0) setGradesSent(count);
+    });
+
+    const unsubFirebaseNotifs = subscribeToNotifications((notifs) => {
+      setNotificationsList(notifs);
+      const unreadCount = notifs.filter((n: any) => n.unread).length;
+      setUnreadNotifCount(unreadCount);
+      if (notifs.length > 0 && notifs[0]?.unread) {
+        setGradeNotifToast({
+          show: true,
+          title: notifs[0].title || "Academic Notification",
+          message: notifs[0].message || "New grade telemetry posted",
+          course: notifs[0].course,
+          teacher: notifs[0].teacher || "Verified Faculty",
+          avgAttendance: campusAttendance
+        });
+        setTimeout(() => setGradeNotifToast(p => ({ ...p, show: false })), 8000);
+      }
+    });
 
     const latestNotifStr = localStorage.getItem("edusphere_latest_notification");
     if (latestNotifStr) {
@@ -515,7 +583,7 @@ export default function Home() {
         if (latest && latest.unread) {
           syncGradeData(true, latest);
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     let bc: BroadcastChannel | null = null;
@@ -528,7 +596,7 @@ export default function Home() {
           }
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const handleStorage = (e: StorageEvent) => {
       if (
@@ -549,11 +617,13 @@ export default function Home() {
     window.addEventListener("edusphere_grade_dispatched", handleCustomDispatch);
 
     return () => {
+      unsubFirebaseGrades();
+      unsubFirebaseNotifs();
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("edusphere_grade_dispatched", handleCustomDispatch);
       if (bc) bc.close();
     };
-  }, [syncGradeData]);
+  }, [syncGradeData, campusAttendance]);
 
   /* Load dynamic counts, saved role, and logged-in student or faculty session */
   useEffect(() => {
@@ -772,6 +842,10 @@ export default function Home() {
         localStorage.setItem("enrolled_count", uniqueCount.toString());
         localStorage.setItem("current_student", JSON.stringify(newPass));
         setEnrolledCount(uniqueCount);
+
+        try {
+          saveStudentToFirebase(studentData);
+        } catch {}
       } catch (err) {
         console.error("Failed to save registered account to localStorage", err);
       }
@@ -955,6 +1029,10 @@ export default function Home() {
         localStorage.setItem("registered_faculty", JSON.stringify(filtered));
         localStorage.setItem("current_faculty", JSON.stringify(newCred));
         localStorage.setItem("current_admin", JSON.stringify(newCred));
+
+        try {
+          saveFacultyToFirebase(newCred);
+        } catch {}
       } catch (err) {
         console.error("Failed to save registered admin account to localStorage", err);
       }
@@ -1165,27 +1243,27 @@ export default function Home() {
   ];
 
   return (
-    <div style={{ background: "#e0e5ec", minHeight: "100vh", fontFamily: "'Outfit',sans-serif", color: "#2d3561", overflowX: "hidden" }}>
+    <div data-theme={isDark ? "dark" : "light"} style={{ background: "var(--neu-bg)", minHeight: "100vh", fontFamily: "'Outfit',sans-serif", color: "var(--text-body)", overflowX: "hidden", transition: "background 0.3s ease, color 0.3s ease" }}>
 
       {/* ===== STICKY MINIMAL NAVBAR ===== */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(224,229,236,0.92)", backdropFilter: "blur(16px)", boxShadow: "0 2px 14px rgba(163,177,198,0.35)", padding: "0 1rem" }}>
+      <nav style={{ position: "sticky", top: 0, zIndex: 100, background: "var(--neu-nav)", backdropFilter: "blur(16px)", boxShadow: isDark ? "0 2px 14px rgba(0,0,0,0.5)" : "0 2px 14px rgba(163,177,198,0.35)", padding: "0 1rem", borderBottom: "1px solid var(--border-subtle)", transition: "background 0.3s ease" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "60px" }}>
 
           {/* Brand */}
           <a href="#" style={{ display: "flex", alignItems: "center", gap: "9px", textDecoration: "none" }}>
-            <div style={{ width: "34px", height: "34px", borderRadius: "10px", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", flexShrink: 0 }}>
+            <div style={{ width: "34px", height: "34px", borderRadius: "10px", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: "var(--neu-shadow-small)", flexShrink: 0 }}>
               <IconGraduationCap size={18} />
             </div>
             <div>
-              <span style={{ fontWeight: "800", fontSize: "1.1rem", color: "#1e293b", letterSpacing: "-0.4px" }}>Edu<span style={{ color: "#3b82f6" }}>Sphere</span></span>
+              <span style={{ fontWeight: "800", fontSize: "1.1rem", color: "var(--text-title)", letterSpacing: "-0.4px" }}>Edu<span style={{ color: "#3b82f6" }}>Sphere</span></span>
             </div>
           </a>
 
           {/* Desktop Nav Links (Modules, Safety, Testimonials for Everyone; Feedback for Students Only) */}
           <div className="nav-links-desktop" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <a href="/#modules" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "#475569", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Modules</a>
-            <a href="/#safety" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "#475569", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Campus Safety</a>
-            <a href="/#testimonials" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "#475569", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Testimonials</a>
+            <a href="/#modules" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Modules</a>
+            <a href="/#safety" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Campus Safety</a>
+            <a href="/#testimonials" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Testimonials</a>
 
             {/* Feedback: Restricted to Students Only */}
             <a
@@ -1194,7 +1272,7 @@ export default function Home() {
                 padding: "6px 12px",
                 borderRadius: "16px",
                 textDecoration: "none",
-                color: isStudent ? "#3b82f6" : "#64748b",
+                color: isStudent ? "#3b82f6" : "var(--text-muted)",
                 fontWeight: "700",
                 fontSize: "0.82rem",
                 transition: "all 0.2s",
@@ -1205,15 +1283,28 @@ export default function Home() {
               title={isStudent ? "Student Feedback Portal" : "Student authorization required to view feedback"}
             >
               Feedback
-              <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "8px", background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)", color: isStudent ? "#3b82f6" : "#64748b", fontWeight: "700" }}>
+              <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "8px", background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)", color: isStudent ? "#3b82f6" : "var(--text-muted)", fontWeight: "700" }}>
                 {isStudent ? "Unlocked" : "Students Only"}
               </span>
             </a>
           </div>
 
           {/* THE ONE POPUP BUTTON (MINIMAL) - Turns into Sign Out when student or faculty is registered/logged in */}
-          {/* Navbar Actions: Notification Bell + Portal Selector / Sign Out */}
+          {/* Navbar Actions: Theme Toggle + Notification Bell + Portal Selector / Sign Out */}
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="theme-toggle-btn"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              <span className="theme-toggle-thumb">
+                {isDark ? "🌙" : "☀️"}
+              </span>
+            </button>
+
             {/* Notification Bell with Badge */}
             <div style={{ position: "relative" }}>
               <button
@@ -1226,7 +1317,7 @@ export default function Home() {
                       setNotificationsList(updated);
                       setUnreadNotifCount(0);
                       localStorage.setItem("edusphere_notifications_list", JSON.stringify(updated));
-                    } catch (err) {}
+                    } catch (err) { }
                   }
                 }}
                 style={{
@@ -1235,14 +1326,14 @@ export default function Home() {
                   borderRadius: "12px",
                   border: "none",
                   cursor: "pointer",
-                  background: notifBellOpen ? "#d1d9e6" : "#e0e5ec",
+                  background: notifBellOpen ? "var(--neu-track)" : "var(--neu-surface)",
                   boxShadow: notifBellOpen
-                    ? "inset 2px 2px 5px #a3b1c6, inset -2px -2px 5px #ffffff"
-                    : "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff",
+                    ? "var(--neu-shadow-input)"
+                    : "var(--neu-shadow-small)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: unreadNotifCount > 0 ? "#2563eb" : "#475569",
+                  color: unreadNotifCount > 0 ? "#2563eb" : "var(--text-muted)",
                   position: "relative",
                   transition: "all 0.2s"
                 }}
@@ -1280,15 +1371,15 @@ export default function Home() {
                   top: "46px",
                   right: 0,
                   width: "320px",
-                  background: "#e0e5ec",
+                  background: "var(--neu-surface)",
                   borderRadius: "18px",
-                  boxShadow: "10px 10px 25px #a3b1c6, -10px -10px 25px #ffffff",
+                  boxShadow: "var(--neu-shadow-float)",
                   padding: "16px",
                   zIndex: 9999,
                   textAlign: "left"
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid rgba(163,177,198,0.3)", paddingBottom: "8px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "800", fontSize: "0.85rem", color: "#1e293b" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "800", fontSize: "0.85rem", color: "var(--text-title)" }}>
                       <IconBell size={15} /> Academic Alerts
                     </div>
                     {notificationsList.length > 0 && (
@@ -1299,7 +1390,7 @@ export default function Home() {
                           setUnreadNotifCount(0);
                           localStorage.setItem("edusphere_notifications_list", "[]");
                         }}
-                        style={{ background: "none", border: "none", color: "#64748b", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600" }}
+                        style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "0.7rem", cursor: "pointer", fontWeight: "600" }}
                       >
                         Clear All
                       </button>
@@ -1312,8 +1403,8 @@ export default function Home() {
                         <div
                           key={n.id}
                           style={{
-                            background: "#e0e5ec",
-                            boxShadow: "inset 2px 2px 4px #a3b1c6, inset -2px -2px 4px #ffffff",
+                            background: "var(--neu-surface)",
+                            boxShadow: "var(--neu-shadow-input)",
                             padding: "10px 12px",
                             borderRadius: "12px",
                             textAlign: "left"
@@ -1323,7 +1414,7 @@ export default function Home() {
                             <span style={{ fontSize: "0.75rem", fontWeight: "800", color: "#3b82f6" }}>{n.title}</span>
                             <span style={{ fontSize: "0.65rem", color: "#94a3b8" }}>{n.timestamp || n.date || "Just now"}</span>
                           </div>
-                          <div style={{ fontSize: "0.75rem", color: "#334155", lineHeight: "1.4" }}>{n.message}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-body)", lineHeight: "1.4" }}>{n.message}</div>
                           {n.course && (
                             <div style={{ fontSize: "0.68rem", color: "#10b981", fontWeight: "700", marginTop: "3px" }}>
                               Course: {n.course}
@@ -1332,7 +1423,7 @@ export default function Home() {
                         </div>
                       ))
                     ) : (
-                      <div style={{ textAlign: "center", padding: "18px 0", color: "#64748b", fontSize: "0.78rem" }}>
+                      <div style={{ textAlign: "center", padding: "18px 0", color: "var(--text-muted)", fontSize: "0.78rem" }}>
                         No new notifications yet. You will be alerted when instructors dispatch grades.
                       </div>
                     )}
@@ -1356,9 +1447,9 @@ export default function Home() {
                 onClick={isStudent ? handleSignOut : handleFacultySignOut}
                 style={{
                   ...minBtnStyle,
-                  background: "#e0e5ec",
+                  background: "var(--neu-surface)",
                   color: "#ef4444",
-                  boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff",
+                  boxShadow: "var(--neu-shadow-small)",
                   padding: "8px 18px",
                   fontSize: "0.84rem",
                   fontWeight: "700"
@@ -1399,9 +1490,9 @@ export default function Home() {
                 borderRadius: "10px",
                 border: "none",
                 cursor: "pointer",
-                background: "#e0e5ec",
-                boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff",
-                color: "#475569",
+                background: "var(--neu-surface)",
+                boxShadow: "var(--neu-shadow-small)",
+                color: "var(--text-muted)",
                 alignItems: "center",
                 justifyContent: "center"
               }}
@@ -1415,15 +1506,15 @@ export default function Home() {
 
       {/* Mobile Menu Drawer */}
       {mobileOpen && (
-        <div style={{ position: "fixed", inset: 0, top: "60px", zIndex: 99, background: "rgba(224,229,236,0.97)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 20px", gap: "12px" }}>
+        <div style={{ position: "fixed", inset: 0, top: "60px", zIndex: 99, background: "var(--neu-nav)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 20px", gap: "12px" }}>
           {[{ label: "Academic Modules", href: "#modules" }, { label: "Campus Safety", href: "#safety" }, { label: "School Community", href: "#testimonials" }].map(item => (
-            <a key={item.label} href={item.href} onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "280px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: "#1e293b", fontWeight: "700", fontSize: "0.92rem", background: "#e0e5ec", boxShadow: "3px 3px 7px #a3b1c6, -3px -3px 7px #ffffff" }}>
+            <a key={item.label} href={item.href} onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "280px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: "var(--text-title)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)" }}>
               {item.label}
             </a>
           ))}
-          <a href="/feedback" onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "280px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: isStudent ? "#3b82f6" : "#64748b", fontWeight: "700", fontSize: "0.92rem", background: "#e0e5ec", boxShadow: "3px 3px 7px #a3b1c6, -3px -3px 7px #ffffff", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+          <a href="/feedback" onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "280px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: isStudent ? "#3b82f6" : "var(--text-muted)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
             <span>Feedback</span>
-            <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "8px", background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)", color: isStudent ? "#3b82f6" : "#64748b" }}>
+            <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "8px", background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)", color: isStudent ? "#3b82f6" : "var(--text-muted)" }}>
               {isStudent ? "Unlocked" : "Students Only"}
             </span>
           </a>
@@ -1442,11 +1533,11 @@ export default function Home() {
                   borderRadius: "14px",
                   border: "none",
                   cursor: "pointer",
-                  background: "#e0e5ec",
+                  background: "var(--neu-surface)",
                   color: "#ef4444",
                   fontWeight: "700",
                   fontSize: "0.92rem",
-                  boxShadow: "4px 4px 10px #a3b1c6, -4px -4px 10px #ffffff",
+                  boxShadow: "var(--neu-shadow-small)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1502,7 +1593,7 @@ export default function Home() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: "#e0e5ec",
+              background: "var(--neu-surface)",
               borderRadius: "24px",
               boxShadow: "16px 16px 36px rgba(0,0,0,0.25), -10px -10px 24px rgba(255,255,255,0.8)",
               maxWidth: "460px",
@@ -1518,8 +1609,8 @@ export default function Home() {
                   <IconSparkles size={16} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: "1.1rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>Select Campus Role</h3>
-                  <p style={{ fontSize: "0.74rem", color: "#64748b", margin: "2px 0 0" }}>Choose your registration and portal access track</p>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>Select Campus Role</h3>
+                  <p style={{ fontSize: "0.74rem", color: "var(--text-muted)", margin: "2px 0 0" }}>Choose your registration and portal access track</p>
                 </div>
               </div>
               <button
@@ -1531,9 +1622,9 @@ export default function Home() {
                   borderRadius: "50%",
                   border: "none",
                   cursor: "pointer",
-                  background: "#e0e5ec",
-                  boxShadow: "2px 2px 5px #a3b1c6, -2px -2px 5px #ffffff",
-                  color: "#64748b",
+                  background: "var(--neu-surface)",
+                  boxShadow: "var(--neu-shadow-small)",
+                  color: "var(--text-muted)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center"
@@ -1557,10 +1648,10 @@ export default function Home() {
                   border: activeTab === "student" ? "2px solid #3b82f6" : "2px solid transparent",
                   cursor: "pointer",
                   textAlign: "left",
-                  background: "#e0e5ec",
+                  background: "var(--neu-surface)",
                   boxShadow: activeTab === "student"
-                    ? "inset 3px 3px 6px #a3b1c6, inset -3px -3px 6px #ffffff, 0 0 14px rgba(59,130,246,0.2)"
-                    : "4px 4px 10px #a3b1c6, -4px -4px 10px #ffffff",
+                    ? "var(--neu-shadow-pressed), 0 0 14px rgba(59,130,246,0.2)"
+                    : "var(--neu-shadow-small)",
                   display: "flex",
                   alignItems: "center",
                   gap: "14px",
@@ -1572,10 +1663,10 @@ export default function Home() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontWeight: "800", fontSize: "0.98rem", color: "#1e293b" }}>Student Portal</div>
+                    <div style={{ fontWeight: "800", fontSize: "0.98rem", color: "var(--text-title)" }}>Student Portal</div>
                     {activeTab === "student" && <span style={{ fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", background: "rgba(59,130,246,0.12)", padding: "2px 7px", borderRadius: "10px" }}>Selected</span>}
                   </div>
-                  <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "3px", lineHeight: "1.4" }}>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "3px", lineHeight: "1.4" }}>
                     Enrollment, official digital pass, grade telemetry, clubs & assignments
                   </div>
                 </div>
@@ -1592,10 +1683,10 @@ export default function Home() {
                   border: activeTab === "faculty" ? "2px solid #8b5cf6" : "2px solid transparent",
                   cursor: "pointer",
                   textAlign: "left",
-                  background: "#e0e5ec",
+                  background: "var(--neu-surface)",
                   boxShadow: activeTab === "faculty"
-                    ? "inset 3px 3px 6px #a3b1c6, inset -3px -3px 6px #ffffff, 0 0 14px rgba(139,92,246,0.2)"
-                    : "4px 4px 10px #a3b1c6, -4px -4px 10px #ffffff",
+                    ? "var(--neu-shadow-pressed), 0 0 14px rgba(139,92,246,0.2)"
+                    : "var(--neu-shadow-small)",
                   display: "flex",
                   alignItems: "center",
                   gap: "14px",
@@ -1607,10 +1698,10 @@ export default function Home() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontWeight: "800", fontSize: "0.98rem", color: "#1e293b" }}>Faculty & Principal</div>
+                    <div style={{ fontWeight: "800", fontSize: "0.98rem", color: "var(--text-title)" }}>Faculty & Principal</div>
                     {activeTab === "faculty" && <span style={{ fontSize: "0.7rem", fontWeight: "700", color: "#8b5cf6", background: "rgba(139,92,246,0.12)", padding: "2px 7px", borderRadius: "10px" }}>Selected</span>}
                   </div>
-                  <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "3px", lineHeight: "1.4" }}>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "3px", lineHeight: "1.4" }}>
                     Educator onboarding, classroom assignment, gradebook & safety audit
                   </div>
                 </div>
@@ -1623,9 +1714,9 @@ export default function Home() {
                 onClick={() => setRolePopupOpen(false)}
                 style={{
                   ...minBtnStyle,
-                  background: "#e0e5ec",
-                  boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff",
-                  color: "#64748b",
+                  background: "var(--neu-surface)",
+                  boxShadow: "var(--neu-shadow-small)",
+                  color: "var(--text-muted)",
                   fontSize: "0.82rem",
                   padding: "7px 20px"
                 }}
@@ -1644,15 +1735,15 @@ export default function Home() {
 
             {/* Left Content */}
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "30px", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.8px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "30px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.8px" }}>
                 <IconSparkles size={14} /> Official Campus Academic Network
               </div>
 
-              <h1 className="hero-h1" style={{ fontSize: "2.5rem", fontWeight: "800", color: "#1e293b", lineHeight: "1.16", letterSpacing: "-1px", marginBottom: "14px" }}>
+              <h1 className="hero-h1" style={{ fontSize: "2.5rem", fontWeight: "800", color: "var(--text-title)", lineHeight: "1.16", letterSpacing: "-1px", marginBottom: "14px" }}>
                 Unified Academic Access for <span style={{ background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Students, Teachers & Principals</span>.
               </h1>
 
-              <p style={{ fontSize: "0.95rem", color: "#475569", lineHeight: "1.7", marginBottom: "24px", maxWidth: "500px" }}>
+              <p style={{ fontSize: "0.95rem", color: "var(--text-muted)", lineHeight: "1.7", marginBottom: "24px", maxWidth: "500px" }}>
                 Issue verified digital campus passes, stream grade telemetry, and manage course syllabi with 100% child privacy protection.
               </p>
 
@@ -1681,9 +1772,9 @@ export default function Home() {
                     textDecoration: "none",
                     padding: "11px 18px",
                     borderRadius: "30px",
-                    background: "#e0e5ec",
-                    boxShadow: "3px 3px 8px #a3b1c6, -3px -3px 8px #ffffff",
-                    color: "#475569",
+                    background: "var(--neu-surface)",
+                    boxShadow: "var(--neu-shadow-small)",
+                    color: "var(--text-muted)",
                     fontSize: "0.9rem"
                   }}
                 >
@@ -1694,7 +1785,7 @@ export default function Home() {
               {/* Trust Badges */}
               <div style={{ display: "flex", gap: "14px", marginTop: "20px", flexWrap: "wrap" }}>
                 {["100% FERPA Protected", "Instant Digital Pass Issuance"].map((b, idx) => (
-                  <div key={b} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.76rem", fontWeight: "600", color: "#475569" }}>
+                  <div key={b} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.76rem", fontWeight: "600", color: "var(--text-muted)" }}>
                     <span style={{ color: idx === 0 ? "#10b981" : "#3b82f6" }}><IconCheck size={14} /></span>
                     {b}
                   </div>
@@ -1703,11 +1794,14 @@ export default function Home() {
             </div>
 
             {/* Right Card */}
-            <div className="hero-card" style={{ background: "#e0e5ec", borderRadius: "22px", boxShadow: "10px 10px 22px #a3b1c6, -10px -10px 22px #ffffff", padding: "22px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <div className="hero-card" style={{ background: "var(--neu-surface)", borderRadius: "22px", boxShadow: "var(--neu-shadow-float)", padding: "22px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "6px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px #10b981" }} />
-                  <span style={{ fontSize: "0.74rem", fontWeight: "700", color: "#1e293b" }}>CAMPUS STATUS: LIVE</span>
+                  <span style={{ fontSize: "0.74rem", fontWeight: "700", color: "var(--text-title)" }}>CAMPUS STATUS: LIVE</span>
+                  <span style={{ fontSize: "0.64rem", color: "#10b981", fontWeight: "700", background: "rgba(16,185,129,0.12)", padding: "2px 6px", borderRadius: "8px" }}>
+                    {isFirebaseConfigured() ? "⚡ Firebase Realtime" : "⚡ Realtime Synced"}
+                  </span>
                 </div>
                 <span style={{ fontSize: "0.68rem", fontWeight: "700", color: "#3b82f6", padding: "2px 8px", borderRadius: "12px", ...NEO_PRESSED }}>AY 2026-2027</span>
               </div>
@@ -1722,7 +1816,7 @@ export default function Home() {
                       {s.icon}
                       <span style={{ fontSize: "0.7rem", fontWeight: "700" }}>{s.label}</span>
                     </div>
-                    <div style={{ fontSize: "1.25rem", fontWeight: "800", color: "#1e293b" }}>{s.val}</div>
+                    <div style={{ fontSize: "1.25rem", fontWeight: "800", color: "var(--text-title)" }}>{s.val}</div>
                   </div>
                 ))}
               </div>
@@ -1730,13 +1824,13 @@ export default function Home() {
               {/* Goal Conversion Tracker Preview in Card */}
               <div style={{ ...NEO_FLAT, borderRadius: "14px", padding: "14px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "0.74rem", fontWeight: "700", color: "#1e293b" }}>🎯 Active Goal Conversion</span>
+                  <span style={{ fontSize: "0.74rem", fontWeight: "700", color: "var(--text-title)" }}>🎯 Active Goal Conversion</span>
                   <span style={{ fontSize: "0.7rem", fontWeight: "700", color: "#10b981" }}>99.2% Issued</span>
                 </div>
-                <div style={{ height: "6px", borderRadius: "4px", background: "#d1d9e6", overflow: "hidden", marginBottom: "10px" }}>
+                <div style={{ height: "6px", borderRadius: "4px", background: "var(--neu-track)", overflow: "hidden", marginBottom: "10px" }}>
                   <div style={{ height: "100%", width: "94%", background: "linear-gradient(90deg, #3b82f6, #10b981)", borderRadius: "4px" }} />
                 </div>
-                <div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: "1.4" }}>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", lineHeight: "1.4" }}>
                   Average pass conversion time: <strong>45 seconds</strong> from role selection to pass download.
                 </div>
               </div>
@@ -1749,7 +1843,7 @@ export default function Home() {
       {/* ===== STATS COUNTER BAR ===== */}
       <ScrollReveal delay={0.1}>
         <section style={{ padding: "10px 1rem 32px", maxWidth: "1200px", margin: "0 auto" }}>
-          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", background: "#e0e5ec", borderRadius: "20px", boxShadow: "8px 8px 18px #a3b1c6, -8px -8px 18px #ffffff", padding: "18px 14px", textAlign: "center" }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", background: "var(--neu-surface)", borderRadius: "20px", boxShadow: "var(--neu-shadow-flat)", padding: "18px 14px", textAlign: "center" }}>
             {[
               { end: enrolledCount, suffix: "", label: "Enrolled Students", sub: "Registered account", color: "#3b82f6" },
               { end: 640, suffix: "+", label: "Verified Faculty", sub: "Teachers & Principals", color: "#10b981" },
@@ -1760,8 +1854,8 @@ export default function Home() {
                 <div style={{ fontSize: "1.75rem", fontWeight: "800", color: s.color, lineHeight: "1.1" }}>
                   <Counter end={s.end} suffix={s.suffix} />
                 </div>
-                <div style={{ fontSize: "0.78rem", fontWeight: "700", color: "#1e293b", marginTop: "3px" }}>{s.label}</div>
-                <div style={{ fontSize: "0.68rem", color: "#64748b" }}>{s.sub}</div>
+                <div style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", marginTop: "3px" }}>{s.label}</div>
+                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>{s.sub}</div>
               </div>
             ))}
           </div>
@@ -1774,14 +1868,14 @@ export default function Home() {
 
           {/* Section Header */}
           <div style={{ textAlign: "center", marginBottom: "24px" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 14px", borderRadius: "30px", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 14px", borderRadius: "30px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>
               <IconTarget /> Campus Onboarding Hub
             </div>
 
-            <h2 className="reg-h2" style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", letterSpacing: "-0.8px", marginBottom: "8px" }}>
+            <h2 className="reg-h2" style={{ fontSize: "2rem", fontWeight: "800", color: "var(--text-title)", letterSpacing: "-0.8px", marginBottom: "8px" }}>
               Multi-Step Pass Registration
             </h2>
-            <p style={{ fontSize: "0.9rem", color: "#64748b", maxWidth: "480px", margin: "0 auto 18px", lineHeight: "1.6" }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto 18px", lineHeight: "1.6" }}>
               Complete the steps below to convert your profile into an official verified digital credential.
             </p>
 
@@ -1809,14 +1903,14 @@ export default function Home() {
           </div>
 
           {/* Form Card */}
-          <div className="form-container" style={{ background: "#e0e5ec", borderRadius: "22px", boxShadow: "10px 10px 24px #a3b1c6, -10px -10px 24px #ffffff", padding: "28px 24px" }}>
+          <div className="form-container" style={{ background: "var(--neu-surface)", borderRadius: "22px", boxShadow: "var(--neu-shadow-float)", padding: "28px 24px" }}>
 
             {/* ===== GOAL CONVERSION TRACKER BANNER ===== */}
             <div style={{ ...NEO_PRESSED, borderRadius: "16px", padding: "14px 18px", marginBottom: "22px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px", flexWrap: "wrap", gap: "6px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <div style={{ color: accentColor }}><IconTarget /></div>
-                  <span style={{ fontSize: "0.8rem", fontWeight: "700", color: "#1e293b" }}>
+                  <span style={{ fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)" }}>
                     {isStudent && studentAuthMode === "login"
                       ? "Goal: Registered Student Portal Authentication"
                       : !isStudent && adminAuthMode === "login"
@@ -1836,7 +1930,7 @@ export default function Home() {
               </div>
 
               {/* Progress Bar */}
-              <div style={{ height: "7px", borderRadius: "4px", background: "#d1d9e6", overflow: "hidden" }}>
+              <div style={{ height: "7px", borderRadius: "4px", background: "var(--neu-track)", overflow: "hidden" }}>
                 <div
                   style={{
                     height: "100%",
@@ -1873,22 +1967,22 @@ export default function Home() {
                               ? "linear-gradient(135deg, #10b981, #059669)"
                               : isActive
                                 ? accentGrad
-                                : "#e0e5ec",
+                                : "var(--neu-surface)",
                             color: isDone || isActive ? "white" : "#94a3b8",
                             boxShadow: isDone || isActive
                               ? "2px 2px 6px rgba(0,0,0,0.15)"
-                              : "inset 2px 2px 4px #a3b1c6, inset -2px -2px 4px #ffffff",
+                              : "var(--neu-shadow-input)",
                             transition: "all 0.3s"
                           }}
                         >
                           {isDone ? <IconCheck size={13} /> : num}
                         </div>
-                        <span style={{ fontSize: "0.72rem", fontWeight: "700", color: isActive ? "#1e293b" : "#94a3b8", whiteSpace: "nowrap" }}>
+                        <span style={{ fontSize: "0.72rem", fontWeight: "700", color: isActive ? "var(--text-title)" : "#94a3b8", whiteSpace: "nowrap" }}>
                           {s.label}
                         </span>
                       </div>
                       {idx < currentSteps.length - 1 && (
-                        <div style={{ flex: 1, height: "2px", borderRadius: "2px", background: isDone ? "#10b981" : "#d1d9e6", minWidth: "6px" }} />
+                        <div style={{ flex: 1, height: "2px", borderRadius: "2px", background: isDone ? "#10b981" : "var(--neu-track)", minWidth: "6px" }} />
                       )}
                     </div>
                   );
@@ -1904,15 +1998,15 @@ export default function Home() {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "8px" }}>
                       <div>
-                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>Registered Student Login</h3>
-                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "2px 0 0" }}>Sign in with your Student ID / LRN or Email to retrieve your pass</p>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>Registered Student Login</h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "2px 0 0" }}>Sign in with your Student ID / LRN or Email to retrieve your pass</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
                           setLoginForm({ identifier: "LRN-2026-48910", password: "StudentPass@2026" });
                         }}
-                        style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#3b82f6", fontSize: "0.78rem", padding: "6px 12px" }}
+                        style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "#3b82f6", fontSize: "0.78rem", padding: "6px 12px" }}
                       >
                         <IconSparkles size={13} /> Demo Fill
                       </button>
@@ -1920,7 +2014,7 @@ export default function Home() {
 
                     <form onSubmit={handleStudentLogin} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                       <div>
-                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Student ID / LRN or Email *</label>
+                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Student ID / LRN or Email *</label>
                         <input
                           type="text"
                           value={loginForm.identifier}
@@ -1932,7 +2026,7 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Password *</label>
+                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Password *</label>
                         <div style={{ position: "relative" }}>
                           <input
                             type={showLoginPwd ? "text" : "password"}
@@ -1945,7 +2039,7 @@ export default function Home() {
                           <button
                             type="button"
                             onClick={() => setShowLoginPwd(p => !p)}
-                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}
+                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
                           >
                             {showLoginPwd ? <IconEyeOff /> : <IconEye />}
                           </button>
@@ -1968,9 +2062,9 @@ export default function Home() {
                           }}
                           style={{
                             ...minBtnStyle,
-                            background: "#e0e5ec",
+                            background: "var(--neu-surface)",
                             color: "#3b82f6",
-                            boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff"
+                            boxShadow: "var(--neu-shadow-small)"
                           }}
                         >
                           Register
@@ -1996,13 +2090,13 @@ export default function Home() {
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "8px" }}>
                           <div>
-                            <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>Student Identification</h3>
-                            <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "2px 0 0" }}>Milestone 1: Verify your LRN and official grade level</p>
+                            <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>Student Identification</h3>
+                            <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "2px 0 0" }}>Milestone 1: Verify your LRN and official grade level</p>
                           </div>
                           <button
                             type="button"
                             onClick={demoS}
-                            style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#3b82f6", fontSize: "0.78rem", padding: "6px 12px" }}
+                            style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "#3b82f6", fontSize: "0.78rem", padding: "6px 12px" }}
                           >
                             <IconSparkles size={13} /> Auto Demo
                           </button>
@@ -2010,25 +2104,25 @@ export default function Home() {
 
                         <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                           <div style={{ gridColumn: "span 2" }}>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Full Official Name *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Full Official Name *</label>
                             <input type="text" value={sForm.fullName} onChange={e => chS("fullName", e.target.value)} placeholder="e.g. Janelle Marie Gomez" style={iStyle(!!sErr.fullName)} />
                             {sErr.fullName && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{sErr.fullName}</span>}
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Student ID / LRN *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Student ID / LRN *</label>
                             <input type="text" value={sForm.studentId} onChange={e => chS("studentId", e.target.value)} placeholder="e.g. LRN-2026-48910" style={iStyle(!!sErr.studentId)} />
                             {sErr.studentId && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{sErr.studentId}</span>}
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Student Email *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Student Email *</label>
                             <input type="email" value={sForm.email} onChange={e => chS("email", e.target.value)} placeholder="student@edusphere.edu" style={iStyle(!!sErr.email)} />
                             {sErr.email && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{sErr.email}</span>}
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Grade Level</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Grade Level</label>
                             <select value={sForm.gradeLevel} onChange={e => chS("gradeLevel", e.target.value)} style={iStyle()}>
                               {["Grade 7 - Junior High", "Grade 8 - Junior High", "Grade 9 - Junior High", "Grade 10 - Junior High", "Grade 11 - Senior High", "Grade 12 - Senior High", "Undergraduate - 1st Year", "Undergraduate - 2nd Year", "Undergraduate - 3rd Year", "Undergraduate - 4th Year"].map(g => (
                                 <option key={g}>{g}</option>
@@ -2037,7 +2131,7 @@ export default function Home() {
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Academic Strand / Track</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Academic Strand / Track</label>
                             <select value={sForm.strand} onChange={e => chS("strand", e.target.value)} style={iStyle()}>
                               {["STEM (Science, Tech, Eng & Math)", "ABM (Accountancy & Business)", "HUMSS (Humanities & Social Sci)", "TVL / ICT & Computer Science", "GAS (General Academic Strand)", "Arts & Design Track"].map(s => (
                                 <option key={s}>{s}</option>
@@ -2046,7 +2140,7 @@ export default function Home() {
                           </div>
 
                           <div style={{ gridColumn: "span 2" }}>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Section / Advisory Room</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Section / Advisory Room</label>
                             <input type="text" value={sForm.section} onChange={e => chS("section", e.target.value)} placeholder="e.g. Archimedes / St. Jude / Section 1" style={iStyle()} />
                           </div>
                         </div>
@@ -2061,9 +2155,9 @@ export default function Home() {
                             }}
                             style={{
                               ...minBtnStyle,
-                              background: "#e0e5ec",
+                              background: "var(--neu-surface)",
                               color: "#3b82f6",
-                              boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff"
+                              boxShadow: "var(--neu-shadow-small)"
                             }}
                           >
                             Log In
@@ -2087,31 +2181,31 @@ export default function Home() {
                     {/* Step 2: Guardian */}
                     {sStep === 2 && (
                       <div>
-                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>Parent & Guardian Contact</h3>
-                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0 0 16px" }}>Milestone 2: Campus safety & emergency gate notification</p>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 4px" }}>Parent & Guardian Contact</h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0 0 16px" }}>Milestone 2: Campus safety & emergency gate notification</p>
 
                         <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                           <div style={{ gridColumn: "span 2" }}>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Parent / Guardian Full Name *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Parent / Guardian Full Name *</label>
                             <input type="text" value={sForm.guardianName} onChange={e => chS("guardianName", e.target.value)} placeholder="e.g. Maria Corazon Gomez (Mother)" style={iStyle(!!sErr.guardianName)} />
                             {sErr.guardianName && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{sErr.guardianName}</span>}
                           </div>
 
                           <div style={{ gridColumn: "span 2" }}>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Emergency Mobile Number *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Emergency Mobile Number *</label>
                             <input type="tel" value={sForm.guardianPhone} onChange={e => chS("guardianPhone", e.target.value)} placeholder="e.g. +63 (917) 845-2901" style={iStyle(!!sErr.guardianPhone)} />
                             {sErr.guardianPhone && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{sErr.guardianPhone}</span>}
                           </div>
                         </div>
 
                         <div style={{ marginTop: "14px", padding: "12px", borderRadius: "12px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)" }}>
-                          <p style={{ fontSize: "0.78rem", color: "#475569", margin: 0, lineHeight: "1.5" }}>
+                          <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: 0, lineHeight: "1.5" }}>
                             🛡️ <strong>Safety Guarantee:</strong> Emergency contacts are FERPA-encrypted and notified only on campus entrance or medical triage.
                           </p>
                         </div>
 
                         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "24px" }}>
-                          <button type="button" onClick={prevS} style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}>
+                          <button type="button" onClick={prevS} style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}>
                             ← Back
                           </button>
                           <button type="button" onClick={nextS} style={{ ...minBtnStyle, background: accentGrad, color: "white", boxShadow: `3px 3px 8px ${accentColor}44` }}>
@@ -2124,8 +2218,8 @@ export default function Home() {
                     {/* Step 3: Clubs */}
                     {sStep === 3 && (
                       <div>
-                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>Co-Curricular Clubs & Guilds</h3>
-                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0 0 16px" }}>Milestone 3: Select student activities to be printed on your digital pass</p>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 4px" }}>Co-Curricular Clubs & Guilds</h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0 0 16px" }}>Milestone 3: Select student activities to be printed on your digital pass</p>
 
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                           {["Robotics & AI Club", "Debate & Speech Society", "Campus Journalism", "Mathematics Olympiad", "Performing Arts", "Varsity Athletics", "Environmental Club", "Peer Counseling"].map(item => {
@@ -2139,9 +2233,9 @@ export default function Home() {
                                   ...minBtnStyle,
                                   padding: "7px 14px",
                                   fontSize: "0.78rem",
-                                  background: sel ? accentGrad : "#e0e5ec",
-                                  color: sel ? "white" : "#475569",
-                                  boxShadow: sel ? "inset 2px 2px 4px rgba(0,0,0,0.2)" : "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff"
+                                  background: sel ? accentGrad : "var(--neu-surface)",
+                                  color: sel ? "white" : "var(--text-muted)",
+                                  boxShadow: sel ? "inset 2px 2px 4px rgba(0,0,0,0.2)" : "var(--neu-shadow-small)"
                                 }}
                               >
                                 {sel ? "✓ " : "+ "}{item}
@@ -2151,7 +2245,7 @@ export default function Home() {
                         </div>
 
                         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "24px" }}>
-                          <button type="button" onClick={prevS} style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}>
+                          <button type="button" onClick={prevS} style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}>
                             ← Back
                           </button>
                           <button type="button" onClick={nextS} style={{ ...minBtnStyle, background: accentGrad, color: "white", boxShadow: `3px 3px 8px ${accentColor}44` }}>
@@ -2164,15 +2258,15 @@ export default function Home() {
                     {/* Step 4: Security */}
                     {sStep === 4 && (
                       <div>
-                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>Portal Security & Policy</h3>
-                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0 0 16px" }}>Final Milestone: Create your access password and confirm safety terms</p>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 4px" }}>Portal Security & Policy</h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0 0 16px" }}>Final Milestone: Create your access password and confirm safety terms</p>
 
                         <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Create Password *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Create Password *</label>
                             <div style={{ position: "relative" }}>
                               <input type={showSPwd ? "text" : "password"} value={sForm.password} onChange={e => chS("password", e.target.value)} placeholder="Min. 6 chars" style={{ ...iStyle(!!sErr.password), paddingRight: "38px" }} />
-                              <button type="button" onClick={() => setShowSPwd(p => !p)} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+                              <button type="button" onClick={() => setShowSPwd(p => !p)} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
                                 {showSPwd ? <IconEyeOff /> : <IconEye />}
                               </button>
                             </div>
@@ -2180,7 +2274,7 @@ export default function Home() {
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Confirm Password *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Confirm Password *</label>
                             <input type={showSPwd ? "text" : "password"} value={sForm.confirmPassword} onChange={e => chS("confirmPassword", e.target.value)} placeholder="Re-enter password" style={iStyle(!!sErr.confirmPassword)} />
                             {sErr.confirmPassword && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{sErr.confirmPassword}</span>}
                           </div>
@@ -2189,7 +2283,7 @@ export default function Home() {
                         <div style={{ ...NEO_PRESSED, borderRadius: "12px", padding: "12px 14px" }}>
                           <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}>
                             <input type="checkbox" checked={sForm.agreeTerms} onChange={e => chS("agreeTerms", e.target.checked)} style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#3b82f6", flexShrink: 0 }} />
-                            <span style={{ fontSize: "0.8rem", color: "#334155", lineHeight: "1.5" }}>
+                            <span style={{ fontSize: "0.8rem", color: "var(--text-body)", lineHeight: "1.5" }}>
                               I accept the <strong>Student Code of Honor</strong> and the{" "}
                               <button type="button" onClick={e => { e.preventDefault(); setLegal({ open: true, tab: "privacy" }); }} style={{ background: "none", border: "none", padding: 0, color: "#3b82f6", fontWeight: "700", textDecoration: "underline", cursor: "pointer" }}>FERPA Data Shield</button> &{" "}
                               <button type="button" onClick={e => { e.preventDefault(); setLegal({ open: true, tab: "safety" }); }} style={{ background: "none", border: "none", padding: 0, color: "#10b981", fontWeight: "700", textDecoration: "underline", cursor: "pointer" }}>Anti-Bullying Charter</button>.
@@ -2199,7 +2293,7 @@ export default function Home() {
                         </div>
 
                         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "24px" }}>
-                          <button type="button" onClick={prevS} style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}>
+                          <button type="button" onClick={prevS} style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}>
                             ← Back
                           </button>
                           <button
@@ -2231,10 +2325,10 @@ export default function Home() {
                           100% GOAL CONVERTED • PASS VERIFIED
                         </div>
 
-                        <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>
+                        <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>
                           Welcome, {sDone.fullName}! 🎓
                         </h3>
-                        <p style={{ fontSize: "0.86rem", color: "#64748b", maxWidth: "440px", margin: "0 auto 18px", lineHeight: "1.6" }}>
+                        <p style={{ fontSize: "0.86rem", color: "var(--text-muted)", maxWidth: "440px", margin: "0 auto 18px", lineHeight: "1.6" }}>
                           Your digital admission pass is verified. Show this ID to your adviser or gate terminal.
                         </p>
 
@@ -2247,17 +2341,17 @@ export default function Home() {
                           ].map(card => (
                             <div key={card.label} style={{ ...NEO_PRESSED, borderRadius: "12px", padding: "12px" }}>
                               <div style={{ fontSize: "0.65rem", fontWeight: "700", color: card.color, textTransform: "uppercase", marginBottom: "3px" }}>{card.label}</div>
-                              <div style={{ fontSize: "0.86rem", fontWeight: "800", color: "#1e293b" }}>{card.val}</div>
-                              <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "2px" }}>{card.sub}</div>
+                              <div style={{ fontSize: "0.86rem", fontWeight: "800", color: "var(--text-title)" }}>{card.val}</div>
+                              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "2px" }}>{card.sub}</div>
                             </div>
                           ))}
                         </div>
 
                         {/* Official Academic Performance & Attendance Section (Accurate to Teacher Records) */}
                         <div style={{
-                          background: "#e0e5ec",
+                          background: "var(--neu-surface)",
                           borderRadius: "18px",
-                          boxShadow: "inset 3px 3px 8px #a3b1c6, inset -3px -3px 8px #ffffff",
+                          boxShadow: "var(--neu-shadow-pressed)",
                           padding: "18px",
                           textAlign: "left",
                           marginBottom: "20px"
@@ -2268,8 +2362,8 @@ export default function Home() {
                                 <IconBookOpen size={16} />
                               </div>
                               <div>
-                                <div style={{ fontSize: "0.88rem", fontWeight: "800", color: "#1e293b" }}>Official Academic & Attendance Telemetry</div>
-                                <div style={{ fontSize: "0.7rem", color: "#64748b" }}>Live synchronized with Faculty Gradebook</div>
+                                <div style={{ fontSize: "0.88rem", fontWeight: "800", color: "var(--text-title)" }}>Official Academic & Attendance Telemetry</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Live synchronized with Faculty Gradebook</div>
                               </div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(16,185,129,0.12)", color: "#059669", padding: "3px 10px", borderRadius: "12px", fontSize: "0.72rem", fontWeight: "700" }}>
@@ -2278,14 +2372,14 @@ export default function Home() {
                           </div>
 
                           {/* Attendance Status Bar */}
-                          <div style={{ background: "#e0e5ec", borderRadius: "12px", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", padding: "12px", marginBottom: "14px" }}>
+                          <div style={{ background: "var(--neu-surface)", borderRadius: "12px", boxShadow: "var(--neu-shadow-small)", padding: "12px", marginBottom: "14px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                              <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#334155" }}>Verified Student Attendance Rate</span>
+                              <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--text-body)" }}>Verified Student Attendance Rate</span>
                               <span style={{ fontSize: "0.95rem", fontWeight: "800", color: "#0284c7" }}>
                                 {studentAttendance || "98.4%"}
                               </span>
                             </div>
-                            <div style={{ height: "6px", borderRadius: "4px", background: "#d1d9e6", overflow: "hidden" }}>
+                            <div style={{ height: "6px", borderRadius: "4px", background: "var(--neu-track)", overflow: "hidden" }}>
                               <div style={{ height: "100%", width: (studentAttendance || "98.4%").includes("%") ? (studentAttendance || "98.4%") : `${studentAttendance || "98.4"}%`, background: "linear-gradient(90deg, #3b82f6, #10b981)", borderRadius: "4px" }} />
                             </div>
                           </div>
@@ -2300,8 +2394,7 @@ export default function Home() {
                               const r1 = gradesRoster[`${sDone.studentId}_${item.course}`];
                               const r2 = gradesRoster[`LRN-2026-48910_${item.course}`];
                               const r3 = gradesRoster[`LRN-001_${item.course}`];
-                              const r4 = gradesRoster[sDone.studentId];
-                              const record = r1 || r2 || r3 || r4;
+                              const record = r1 || r2 || r3;
 
                               const gradeVal = record?.grade || item.defaultGrade;
                               const attVal = record?.attendance || item.defaultAtt;
@@ -2315,22 +2408,22 @@ export default function Home() {
                                     gridTemplateColumns: "1.6fr 1fr 1fr 1fr",
                                     gap: "8px",
                                     alignItems: "center",
-                                    background: "#e0e5ec",
+                                    background: "var(--neu-surface)",
                                     padding: "8px 12px",
                                     borderRadius: "10px",
-                                    boxShadow: "2px 2px 5px #a3b1c6, -2px -2px 5px #ffffff"
+                                    boxShadow: "var(--neu-shadow-small)"
                                   }}
                                 >
                                   <div>
-                                    <div style={{ fontSize: "0.78rem", fontWeight: "700", color: "#1e293b" }}>{item.course}</div>
-                                    <div style={{ fontSize: "0.68rem", color: "#64748b" }}>{teacherVal}</div>
+                                    <div style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)" }}>{item.course}</div>
+                                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>{teacherVal}</div>
                                   </div>
                                   <div style={{ textAlign: "center" }}>
-                                    <div style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: "600" }}>Attendance</div>
+                                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: "600" }}>Attendance</div>
                                     <div style={{ fontSize: "0.82rem", fontWeight: "800", color: "#0284c7" }}>{attVal}</div>
                                   </div>
                                   <div style={{ textAlign: "center" }}>
-                                    <div style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: "600" }}>Final Grade</div>
+                                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: "600" }}>Final Grade</div>
                                     <div style={{ fontSize: "0.88rem", fontWeight: "800", color: "#10b981" }}>{gradeVal}</div>
                                   </div>
                                   <div style={{ textAlign: "right" }}>
@@ -2356,14 +2449,14 @@ export default function Home() {
                           <button
                             type="button"
                             onClick={() => copyCredential(sDone.passId)}
-                            style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#1e293b" }}
+                            style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-title)" }}
                           >
                             <IconCopy /> {copiedPass ? "Copied!" : "Copy Pass ID"}
                           </button>
                           <button
                             type="button"
                             onClick={handleSignOut}
-                            style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}
+                            style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}
                           >
                             <IconRotate /> Reset
                           </button>
@@ -2383,15 +2476,15 @@ export default function Home() {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "8px" }}>
                       <div>
-                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>Registered Admin / Faculty Login</h3>
-                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "2px 0 0" }}>Sign in with your Faculty ID or Email to retrieve your clearance</p>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>Registered Admin / Faculty Login</h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "2px 0 0" }}>Sign in with your Faculty ID or Email to retrieve your clearance</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
                           setAdminLoginForm({ identifier: "FAC-ADM-2026-004", password: "PrincipalMaster@2026" });
                         }}
-                        style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#8b5cf6", fontSize: "0.78rem", padding: "6px 12px" }}
+                        style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "#8b5cf6", fontSize: "0.78rem", padding: "6px 12px" }}
                       >
                         <IconSparkles size={13} /> Demo Fill
                       </button>
@@ -2399,7 +2492,7 @@ export default function Home() {
 
                     <form onSubmit={handleAdminLogin} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                       <div>
-                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Faculty / Employee ID or Email *</label>
+                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Faculty / Employee ID or Email *</label>
                         <input
                           type="text"
                           value={adminLoginForm.identifier}
@@ -2411,7 +2504,7 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Password *</label>
+                        <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Password *</label>
                         <div style={{ position: "relative" }}>
                           <input
                             type={showAdminLoginPwd ? "text" : "password"}
@@ -2424,7 +2517,7 @@ export default function Home() {
                           <button
                             type="button"
                             onClick={() => setShowAdminLoginPwd(p => !p)}
-                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}
+                            style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
                           >
                             {showAdminLoginPwd ? <IconEyeOff /> : <IconEye />}
                           </button>
@@ -2447,9 +2540,9 @@ export default function Home() {
                           }}
                           style={{
                             ...minBtnStyle,
-                            background: "#e0e5ec",
+                            background: "var(--neu-surface)",
                             color: "#8b5cf6",
-                            boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff"
+                            boxShadow: "var(--neu-shadow-small)"
                           }}
                         >
                           Register
@@ -2475,13 +2568,13 @@ export default function Home() {
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "8px" }}>
                           <div>
-                            <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>Faculty Profile</h3>
-                            <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "2px 0 0" }}>Milestone 1: Verify your educator credentials and school post</p>
+                            <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>Faculty Profile</h3>
+                            <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "2px 0 0" }}>Milestone 1: Verify your educator credentials and school post</p>
                           </div>
                           <button
                             type="button"
                             onClick={demoF}
-                            style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#8b5cf6", fontSize: "0.78rem", padding: "6px 12px" }}
+                            style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "#8b5cf6", fontSize: "0.78rem", padding: "6px 12px" }}
                           >
                             <IconSparkles size={13} /> Auto Demo
                           </button>
@@ -2489,13 +2582,13 @@ export default function Home() {
 
                         <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                           <div style={{ gridColumn: "span 2" }}>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Official Name & Title *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Official Name & Title *</label>
                             <input type="text" value={fForm.fullName} onChange={e => chF("fullName", e.target.value)} placeholder="e.g. Dr. Roberto M. Reyes, Ph.D." style={iStyle(!!fErr.fullName)} />
                             {fErr.fullName && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{fErr.fullName}</span>}
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Institutional Role *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Institutional Role *</label>
                             <select value={fForm.role} onChange={e => chF("role", e.target.value)} style={iStyle()}>
                               {["Teacher / Faculty Instructor", "Department Head / Subject Chair", "Principal / Head of School", "Vice Principal / Assistant Principal", "Guidance Counselor", "School Registrar / Academic Admin"].map(r => (
                                 <option key={r}>{r}</option>
@@ -2504,19 +2597,19 @@ export default function Home() {
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Faculty / Employee ID *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Faculty / Employee ID *</label>
                             <input type="text" value={fForm.facultyId} onChange={e => chF("facultyId", e.target.value)} placeholder="e.g. FAC-2026-0419" style={iStyle(!!fErr.facultyId)} />
                             {fErr.facultyId && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{fErr.facultyId}</span>}
                           </div>
 
                           <div style={{ gridColumn: "span 2" }}>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>School / Campus Name *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>School / Campus Name *</label>
                             <input type="text" value={fForm.institution} onChange={e => chF("institution", e.target.value)} placeholder="e.g. Metropolitan Academic Science Institute" style={iStyle(!!fErr.institution)} />
                             {fErr.institution && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{fErr.institution}</span>}
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Department</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Department</label>
                             <select value={fForm.department} onChange={e => chF("department", e.target.value)} style={iStyle()}>
                               {["Science & Engineering Dept", "Mathematics Department", "English & Language Studies", "Social Studies & Humanities", "Arts & Design", "Physical Education", "Office of the Principal & Academic Affairs", "Guidance & Counseling Office"].map(d => (
                                 <option key={d}>{d}</option>
@@ -2525,7 +2618,7 @@ export default function Home() {
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Teaching Experience</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Teaching Experience</label>
                             <select value={fForm.experienceYears} onChange={e => chF("experienceYears", e.target.value)} style={iStyle()}>
                               {["1 - 2 Years", "3 - 5 Years", "5+ Years", "10+ Years", "15+ Years"].map(y => (
                                 <option key={y}>{y}</option>
@@ -2544,9 +2637,9 @@ export default function Home() {
                             }}
                             style={{
                               ...minBtnStyle,
-                              background: "#e0e5ec",
+                              background: "var(--neu-surface)",
                               color: "#8b5cf6",
-                              boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff"
+                              boxShadow: "var(--neu-shadow-small)"
                             }}
                           >
                             Log In
@@ -2565,30 +2658,30 @@ export default function Home() {
                     {/* Step 2: Faculty Contact */}
                     {fStep === 2 && (
                       <div>
-                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>Office & Contact Details</h3>
-                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0 0 16px" }}>Milestone 2: Official faculty directory assignment</p>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 4px" }}>Office & Contact Details</h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0 0 16px" }}>Milestone 2: Official faculty directory assignment</p>
 
                         <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                           <div style={{ gridColumn: "span 2" }}>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Institutional Email *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Institutional Email *</label>
                             <input type="email" value={fForm.email} onChange={e => chF("email", e.target.value)} placeholder="faculty@edusphere.edu" style={iStyle(!!fErr.email)} />
                             {fErr.email && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{fErr.email}</span>}
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Direct Mobile Number *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Direct Mobile Number *</label>
                             <input type="tel" value={fForm.phone} onChange={e => chF("phone", e.target.value)} placeholder="+63 (918) 552-3140" style={iStyle(!!fErr.phone)} />
                             {fErr.phone && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{fErr.phone}</span>}
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Office Room Location</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Office Room Location</label>
                             <input type="text" value={fForm.roomOffice} onChange={e => chF("roomOffice", e.target.value)} placeholder="e.g. Science Complex, Rm 302" style={iStyle()} />
                           </div>
                         </div>
 
                         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "24px" }}>
-                          <button type="button" onClick={prevF} style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}>
+                          <button type="button" onClick={prevF} style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}>
                             ← Back
                           </button>
                           <button type="button" onClick={nextF} style={{ ...minBtnStyle, background: accentGrad, color: "white", boxShadow: `3px 3px 8px ${accentColor}44` }}>
@@ -2601,15 +2694,15 @@ export default function Home() {
                     {/* Step 3: Faculty Security */}
                     {fStep === 3 && (
                       <div>
-                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>Tier-1 Clearance & Ethics Pledge</h3>
-                        <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0 0 16px" }}>Final Milestone: Gradebook admin password and educator pledge</p>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 4px" }}>Tier-1 Clearance & Ethics Pledge</h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0 0 16px" }}>Final Milestone: Gradebook admin password and educator pledge</p>
 
                         <div className="form-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Create Password *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Create Password *</label>
                             <div style={{ position: "relative" }}>
                               <input type={showFPwd ? "text" : "password"} value={fForm.password} onChange={e => chF("password", e.target.value)} placeholder="Min. 6 chars" style={{ ...iStyle(!!fErr.password), paddingRight: "38px" }} />
-                              <button type="button" onClick={() => setShowFPwd(p => !p)} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+                              <button type="button" onClick={() => setShowFPwd(p => !p)} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
                                 {showFPwd ? <IconEyeOff /> : <IconEye />}
                               </button>
                             </div>
@@ -2617,7 +2710,7 @@ export default function Home() {
                           </div>
 
                           <div>
-                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", marginBottom: "5px" }}>Confirm Password *</label>
+                            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", color: "var(--text-title)", marginBottom: "5px" }}>Confirm Password *</label>
                             <input type={showFPwd ? "text" : "password"} value={fForm.confirmPassword} onChange={e => chF("confirmPassword", e.target.value)} placeholder="Re-enter password" style={iStyle(!!fErr.confirmPassword)} />
                             {fErr.confirmPassword && <span style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "3px", display: "block" }}>{fErr.confirmPassword}</span>}
                           </div>
@@ -2626,7 +2719,7 @@ export default function Home() {
                         <div style={{ ...NEO_PRESSED, borderRadius: "12px", padding: "12px 14px" }}>
                           <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}>
                             <input type="checkbox" checked={fForm.agreeTerms} onChange={e => chF("agreeTerms", e.target.checked)} style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#8b5cf6", flexShrink: 0 }} />
-                            <span style={{ fontSize: "0.8rem", color: "#334155", lineHeight: "1.5" }}>
+                            <span style={{ fontSize: "0.8rem", color: "var(--text-body)", lineHeight: "1.5" }}>
                               I uphold the <strong>Professional Code of Ethics for Teachers</strong> and honor the{" "}
                               <button type="button" onClick={e => { e.preventDefault(); setLegal({ open: true, tab: "privacy" }); }} style={{ background: "none", border: "none", padding: 0, color: "#8b5cf6", fontWeight: "700", textDecoration: "underline", cursor: "pointer" }}>FERPA Mandate</button> &{" "}
                               <button type="button" onClick={e => { e.preventDefault(); setLegal({ open: true, tab: "safety" }); }} style={{ background: "none", border: "none", padding: 0, color: "#10b981", fontWeight: "700", textDecoration: "underline", cursor: "pointer" }}>Child Protection Standard</button>.
@@ -2636,7 +2729,7 @@ export default function Home() {
                         </div>
 
                         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "24px" }}>
-                          <button type="button" onClick={prevF} style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}>
+                          <button type="button" onClick={prevF} style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}>
                             ← Back
                           </button>
                           <button
@@ -2668,10 +2761,10 @@ export default function Home() {
                           100% GOAL CONVERTED • CLEARANCE PASS ISSUED
                         </div>
 
-                        <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>
+                        <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>
                           Welcome, {fDone.fullName}! 🧑‍🏫
                         </h3>
-                        <p style={{ fontSize: "0.86rem", color: "#64748b", maxWidth: "440px", margin: "0 auto 18px", lineHeight: "1.6" }}>
+                        <p style={{ fontSize: "0.86rem", color: "var(--text-muted)", maxWidth: "440px", margin: "0 auto 18px", lineHeight: "1.6" }}>
                           Your Tier-1 Academic Clearance Pass is ready. You now have full gradebook and administrative privileges.
                         </p>
 
@@ -2684,8 +2777,8 @@ export default function Home() {
                           ].map(card => (
                             <div key={card.label} style={{ ...NEO_PRESSED, borderRadius: "12px", padding: "12px" }}>
                               <div style={{ fontSize: "0.65rem", fontWeight: "700", color: card.color, textTransform: "uppercase", marginBottom: "3px" }}>{card.label}</div>
-                              <div style={{ fontSize: "0.86rem", fontWeight: "800", color: "#1e293b" }}>{card.val}</div>
-                              <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "2px" }}>{card.sub}</div>
+                              <div style={{ fontSize: "0.86rem", fontWeight: "800", color: "var(--text-title)" }}>{card.val}</div>
+                              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "2px" }}>{card.sub}</div>
                             </div>
                           ))}
                         </div>
@@ -2702,20 +2795,20 @@ export default function Home() {
                           <button
                             type="button"
                             onClick={() => copyCredential(fDone.credentialId)}
-                            style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#1e293b" }}
+                            style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-title)" }}
                           >
                             <IconCopy /> {copiedPass ? "Copied!" : "Copy Clearance ID"}
                           </button>
                           <a
                             href="/faculty/grades"
-                            style={{ ...minBtnStyle, textDecoration: "none", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#10b981" }}
+                            style={{ ...minBtnStyle, textDecoration: "none", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "#10b981" }}
                           >
                             <IconSparkles size={16} /> Send Grades
                           </a>
                           <button
                             type="button"
                             onClick={handleFacultySignOut}
-                            style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}
+                            style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}
                           >
                             <IconRotate /> Reset
                           </button>
@@ -2735,13 +2828,13 @@ export default function Home() {
       <ScrollReveal delay={0.1}>
         <section id="modules" style={{ padding: "30px 1rem 50px", maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
-            <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: "30px", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
+            <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: "30px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
               Core Infrastructure
             </div>
-            <h2 style={{ fontSize: "1.8rem", fontWeight: "800", color: "#1e293b", letterSpacing: "-0.5px", marginBottom: "8px" }}>
+            <h2 style={{ fontSize: "1.8rem", fontWeight: "800", color: "var(--text-title)", letterSpacing: "-0.5px", marginBottom: "8px" }}>
               Engineered for Modern Classrooms
             </h2>
-            <p style={{ fontSize: "0.9rem", color: "#64748b", maxWidth: "460px", margin: "0 auto", lineHeight: "1.6" }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", maxWidth: "460px", margin: "0 auto", lineHeight: "1.6" }}>
               Everything a school requires: interactive courses, real-time grades, and student safety telemetry.
             </p>
           </div>
@@ -2752,26 +2845,27 @@ export default function Home() {
                 key={m.title}
                 onClick={() => setActiveModule(i)}
                 style={{
-                  background: "#e0e5ec",
+                  background: "var(--neu-card)",
                   borderRadius: "20px",
                   padding: "22px 18px",
                   boxShadow: activeModule === i
-                    ? `inset 4px 4px 10px #a3b1c6, inset -4px -4px 10px #ffffff, 0 0 0 2px ${m.color}66`
-                    : "6px 6px 16px #a3b1c6, -6px -6px 16px #ffffff",
+                    ? `var(--neu-shadow-pressed), 0 0 0 2px ${m.color}`
+                    : "var(--neu-shadow-flat)",
+                  border: "1px solid var(--border-card)",
                   cursor: "pointer",
                   transition: "all 0.25s ease"
                 }}
               >
-                <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#e0e5ec", boxShadow: "4px 4px 8px #a3b1c6, -4px -4px 8px #ffffff", display: "flex", alignItems: "center", justifyContent: "center", color: m.color, marginBottom: "14px" }}>
+                <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center", color: m.color, marginBottom: "14px" }}>
                   {m.icon}
                 </div>
-                <h3 style={{ fontSize: "1.05rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>{m.title}</h3>
-                <p style={{ fontSize: "0.8rem", color: "#64748b", lineHeight: "1.55", marginBottom: "14px" }}>{m.desc}</p>
+                <h3 style={{ fontSize: "1.05rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>{m.title}</h3>
+                <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: "1.55", marginBottom: "14px" }}>{m.desc}</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   {m.features.map(f => (
                     <div key={f} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <div style={{ width: "14px", height: "14px", borderRadius: "4px", background: m.color, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6rem", flexShrink: 0 }}>✓</div>
-                      <span style={{ fontSize: "0.76rem", color: "#334155", fontWeight: "600" }}>{f}</span>
+                      <span style={{ fontSize: "0.76rem", color: "var(--text-body)", fontWeight: "600" }}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -2784,14 +2878,14 @@ export default function Home() {
       {/* ===== CAMPUS SAFETY & CHILD PROTECTION ===== */}
       <ScrollReveal delay={0.1}>
         <section id="safety" style={{ padding: "30px 1rem 50px", maxWidth: "1200px", margin: "0 auto" }}>
-          <div className="safety-padding" style={{ background: "#e0e5ec", borderRadius: "22px", boxShadow: "10px 10px 22px #a3b1c6, -10px -10px 22px #ffffff", padding: "32px 24px" }}>
+          <div className="safety-padding" style={{ background: "var(--neu-card)", borderRadius: "22px", boxShadow: "var(--neu-shadow-float)", border: "1px solid var(--border-card)", padding: "32px 24px" }}>
             <div className="safety-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "28px", alignItems: "center" }}>
               <div>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "3px 12px", borderRadius: "20px", background: "#e0e5ec", boxShadow: "inset 2px 2px 5px #a3b1c6, inset -2px -2px 5px #ffffff", fontSize: "0.7rem", fontWeight: "700", color: "#8b5cf6", marginBottom: "12px", textTransform: "uppercase" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "3px 12px", borderRadius: "20px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-input)", fontSize: "0.7rem", fontWeight: "700", color: "#8b5cf6", marginBottom: "12px", textTransform: "uppercase" }}>
                   <IconShield size={14} /> Child Protection & Safety
                 </div>
-                <h3 style={{ fontSize: "1.6rem", fontWeight: "800", color: "#1e293b", marginBottom: "10px" }}>Safe, Zero-Harassment Campus</h3>
-                <p style={{ fontSize: "0.88rem", color: "#475569", lineHeight: "1.7", marginBottom: "16px" }}>
+                <h3 style={{ fontSize: "1.6rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "10px" }}>Safe, Zero-Harassment Campus</h3>
+                <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", lineHeight: "1.7", marginBottom: "16px" }}>
                   EduSphere integrates encrypted attendance check-ins, automated parent alerts, and confidential anti-bullying reporting for school counselors.
                 </p>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -2805,7 +2899,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setLegal({ open: true, tab: "privacy" })}
-                    style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#475569" }}
+                    style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}
                   >
                     FERPA Privacy
                   </button>
@@ -2821,8 +2915,8 @@ export default function Home() {
                   <div key={i} style={{ display: "flex", gap: "10px", alignItems: "center", ...NEO_PRESSED, borderRadius: "14px", padding: "12px 14px" }}>
                     <div style={{ fontSize: "1.3rem", flexShrink: 0 }}>{item.icon}</div>
                     <div>
-                      <h4 style={{ fontSize: "0.86rem", fontWeight: "800", color: "#1e293b", margin: "0 0 2px" }}>{item.title}</h4>
-                      <p style={{ fontSize: "0.74rem", color: "#64748b", margin: 0, lineHeight: "1.4" }}>{item.desc}</p>
+                      <h4 style={{ fontSize: "0.86rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 2px" }}>{item.title}</h4>
+                      <p style={{ fontSize: "0.74rem", color: "var(--text-muted)", margin: 0, lineHeight: "1.4" }}>{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -2836,22 +2930,22 @@ export default function Home() {
       <ScrollReveal delay={0.1}>
         <section id="testimonials" style={{ padding: "30px 1rem 50px", maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
-            <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: "30px", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", fontSize: "0.7rem", fontWeight: "700", color: "#8b5cf6", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
+            <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: "30px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", fontSize: "0.7rem", fontWeight: "700", color: "#8b5cf6", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>
               Community Feedback
             </div>
-            <h2 style={{ fontSize: "1.8rem", fontWeight: "800", color: "#1e293b", letterSpacing: "-0.5px" }}>
+            <h2 style={{ fontSize: "1.8rem", fontWeight: "800", color: "var(--text-title)", letterSpacing: "-0.5px" }}>
               Trusted by School Leaders & Students
             </h2>
           </div>
 
           <div className="testimonials-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
             {testimonials.map((t, i) => (
-              <div key={i} style={{ background: "#e0e5ec", borderRadius: "20px", padding: "22px 18px", boxShadow: "6px 6px 16px #a3b1c6, -6px -6px 16px #ffffff", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <div key={i} style={{ background: "var(--neu-card)", borderRadius: "20px", padding: "22px 18px", boxShadow: "var(--neu-shadow-flat)", border: "1px solid var(--border-card)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ display: "flex", gap: "2px", marginBottom: "10px", color: "#f59e0b" }}>
                     {Array.from({ length: t.rating }).map((_, j) => <IconStar key={j} />)}
                   </div>
-                  <p style={{ fontSize: "0.82rem", color: "#475569", lineHeight: "1.65", marginBottom: "16px", fontStyle: "italic" }}>
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: "1.65", marginBottom: "16px", fontStyle: "italic" }}>
                     "{t.text}"
                   </p>
                 </div>
@@ -2860,8 +2954,8 @@ export default function Home() {
                     {t.avatar}
                   </div>
                   <div>
-                    <div style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.82rem" }}>{t.name}</div>
-                    <div style={{ fontSize: "0.68rem", color: "#64748b" }}>{t.role}</div>
+                    <div style={{ fontWeight: "800", color: "var(--text-title)", fontSize: "0.82rem" }}>{t.name}</div>
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>{t.role}</div>
                   </div>
                 </div>
               </div>
@@ -2877,8 +2971,8 @@ export default function Home() {
             <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
               <IconGraduationCap size={15} />
             </div>
-            <span style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.92rem" }}>Edu<span style={{ color: "#3b82f6" }}>Sphere</span></span>
-            <span style={{ fontSize: "0.7rem", color: "#64748b" }}>© 2026 Academic Network</span>
+            <span style={{ fontWeight: "800", color: "var(--text-title)", fontSize: "0.92rem" }}>Edu<span style={{ color: "#3b82f6" }}>Sphere</span></span>
+            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>© 2026 Academic Network</span>
           </div>
 
           <div className="footer-links" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
@@ -2891,7 +2985,7 @@ export default function Home() {
                 key={l.label}
                 type="button"
                 onClick={() => setLegal({ open: true, tab: l.tab })}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.76rem", color: "#475569", fontWeight: "600", fontFamily: "'Outfit',sans-serif", textDecoration: "underline" }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.76rem", color: "var(--text-muted)", fontWeight: "600", fontFamily: "'Outfit',sans-serif", textDecoration: "underline" }}
               >
                 {l.label}
               </button>
@@ -2908,7 +3002,7 @@ export default function Home() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#e0e5ec", borderRadius: "20px", boxShadow: "16px 16px 36px rgba(0,0,0,0.25)", maxWidth: "640px", width: "100%", maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            style={{ background: "var(--neu-surface)", borderRadius: "20px", boxShadow: "16px 16px 36px rgba(0,0,0,0.25)", maxWidth: "640px", width: "100%", maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
           >
             <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(163,177,198,0.3)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -2916,14 +3010,14 @@ export default function Home() {
                   <IconShield size={16} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "#1e293b", margin: 0 }}>Campus Compliance</h3>
-                  <p style={{ fontSize: "0.72rem", color: "#64748b", margin: 0 }}>Privacy, safety, and conduct regulations</p>
+                  <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>Campus Compliance</h3>
+                  <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: 0 }}>Privacy, safety, and conduct regulations</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setLegal(p => ({ ...p, open: false }))}
-                style={{ width: "28px", height: "28px", borderRadius: "50%", border: "none", cursor: "pointer", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}
+                style={{ width: "28px", height: "28px", borderRadius: "50%", border: "none", cursor: "pointer", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}
               >
                 <IconClose size={14} />
               </button>
@@ -2947,9 +3041,9 @@ export default function Home() {
                     fontFamily: "'Outfit',sans-serif",
                     fontWeight: "700",
                     fontSize: "0.78rem",
-                    color: legal.tab === tab.id ? "#3b82f6" : "#64748b",
-                    background: legal.tab === tab.id ? "#e0e5ec" : "transparent",
-                    boxShadow: legal.tab === tab.id ? "inset 2px 2px 4px #a3b1c6, inset -2px -2px 4px #ffffff" : "none"
+                    color: legal.tab === tab.id ? "#3b82f6" : "var(--text-muted)",
+                    background: legal.tab === tab.id ? "var(--neu-surface)" : "transparent",
+                    boxShadow: legal.tab === tab.id ? "var(--neu-shadow-input)" : "none"
                   }}
                 >
                   {tab.label}
@@ -2957,38 +3051,38 @@ export default function Home() {
               ))}
             </div>
 
-            <div style={{ padding: "16px 20px", overflowY: "auto", fontSize: "0.86rem", color: "#334155", lineHeight: "1.7" }}>
+            <div style={{ padding: "16px 20px", overflowY: "auto", fontSize: "0.86rem", color: "var(--text-body)", lineHeight: "1.7" }}>
               {legal.tab === "privacy" && (
                 <div>
-                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>1. FERPA Student Record Protection</h4>
+                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>1. FERPA Student Record Protection</h4>
                   <p style={{ marginBottom: "10px" }}>EduSphere conforms strictly with FERPA, COPPA, and national student data regulations. All student grades, medical records, and parent contacts are protected under administrative confidentiality.</p>
-                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>2. Zero Commercial Monetization</h4>
+                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>2. Zero Commercial Monetization</h4>
                   <p>EduSphere guarantees zero commercialization: records are never monetized, traded, or shared with third-party advertisers.</p>
                 </div>
               )}
               {legal.tab === "safety" && (
                 <div>
-                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>1. Zero-Tolerance Harassment Policy</h4>
+                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>1. Zero-Tolerance Harassment Policy</h4>
                   <p style={{ marginBottom: "10px" }}>Partner campuses enforce strict zero-tolerance policies against bullying, cyber-bullying, and discrimination. All incident reports are reviewed within 12 hours.</p>
-                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>2. Gate Telemetry & Alerts</h4>
+                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>2. Gate Telemetry & Alerts</h4>
                   <p>Parent contact numbers are used exclusively for campus entry time notifications and emergency weather dispatch.</p>
                 </div>
               )}
               {legal.tab === "conduct" && (
                 <div>
-                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>1. Academic Integrity & Honor Pledge</h4>
+                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>1. Academic Integrity & Honor Pledge</h4>
                   <p style={{ marginBottom: "10px" }}>Students certify that assignments represent authentic coursework. Plagiarism and unauthorized academic dishonesty are subject to administrative review.</p>
-                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e293b", marginBottom: "6px" }}>2. Educator Ethics Standard</h4>
+                  <h4 style={{ fontSize: "0.95rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>2. Educator Ethics Standard</h4>
                   <p>Faculty members maintain impartial grade evaluations and confidential gradebook integrity.</p>
                 </div>
               )}
             </div>
 
-            <div style={{ padding: "12px 20px", borderTop: "1px solid rgba(163,177,198,0.3)", display: "flex", justifyContent: "flex-end", gap: "8px", background: "#e0e5ec" }}>
+            <div style={{ padding: "12px 20px", borderTop: "1px solid rgba(163,177,198,0.3)", display: "flex", justifyContent: "flex-end", gap: "8px", background: "var(--neu-surface)" }}>
               <button
                 type="button"
                 onClick={() => setLegal(p => ({ ...p, open: false }))}
-                style={{ ...minBtnStyle, background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff", color: "#64748b" }}
+                style={{ ...minBtnStyle, background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", color: "var(--text-muted)" }}
               >
                 Close
               </button>
@@ -3019,7 +3113,7 @@ export default function Home() {
           position: "fixed",
           bottom: "24px",
           right: "24px",
-          background: "linear-gradient(135deg, #1e293b, #0f172a)",
+          background: "linear-gradient(135deg, var(--text-title), #0f172a)",
           border: "1px solid rgba(59,130,246,0.3)",
           color: "white",
           padding: "18px 22px",

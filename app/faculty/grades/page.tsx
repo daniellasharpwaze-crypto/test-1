@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { dispatchGradeToFirebase, sendNotificationToFirebase, isFirebaseConfigured } from "@/lib/firebase";
 
 /* Minimal Icons */
 function IconArrowLeft() {
@@ -47,8 +48,10 @@ const baseStudentsData: StudentItem[] = [
   { id: "LRN-001", name: "Janelle Marie Gomez", course: "Advanced Mathematics" },
   { id: "LRN-002", name: "Mark Reyes", course: "Advanced Mathematics" },
   { id: "LRN-003", name: "Sophia Torres", course: "Advanced Mathematics" },
+  { id: "LRN-001", name: "Janelle Marie Gomez", course: "Physics 101" },
   { id: "LRN-004", name: "Liam Santos", course: "Physics 101" },
   { id: "LRN-005", name: "Emma Cruz", course: "Physics 101" },
+  { id: "LRN-001", name: "Janelle Marie Gomez", course: "Computer Science II" },
   { id: "LRN-006", name: "Noah Bautista", course: "Computer Science II" },
   { id: "LRN-007", name: "Olivia Villanueva", course: "Computer Science II" },
 ];
@@ -97,25 +100,26 @@ export default function FacultyGradesPage() {
       const initialAtt: Record<string, string> = {};
 
       mergedList.forEach(s => {
-        const key = `${s.id}_${s.course}`;
-        const record = savedRoster[key] || savedRoster[s.id];
+        // Use compound key (id + course) so each student-course combo is independent
+        const compoundKey = `${s.id}_${s.course}`;
+        const record = savedRoster[compoundKey];
         if (record) {
-          if (record.grade) initialGrades[s.id] = record.grade;
-          if (record.attendance) initialAtt[s.id] = record.attendance;
+          if (record.grade) initialGrades[compoundKey] = record.grade;
+          if (record.attendance) initialAtt[compoundKey] = record.attendance;
         } else {
-          // Default baseline attendance for realistic faculty roster
+          // Default baseline grades per student name
           if (s.name.includes("Janelle")) {
-            initialAtt[s.id] = "98.4%";
-            initialGrades[s.id] = "95";
+            initialAtt[compoundKey] = "98.4%";
+            initialGrades[compoundKey] = "95";
           } else if (s.name.includes("Mark")) {
-            initialAtt[s.id] = "96.5%";
-            initialGrades[s.id] = "91";
+            initialAtt[compoundKey] = "96.5%";
+            initialGrades[compoundKey] = "91";
           } else if (s.name.includes("Sophia")) {
-            initialAtt[s.id] = "99.0%";
-            initialGrades[s.id] = "97";
+            initialAtt[compoundKey] = "99.0%";
+            initialGrades[compoundKey] = "97";
           } else {
-            initialAtt[s.id] = "98.0%";
-            initialGrades[s.id] = "92";
+            initialAtt[compoundKey] = "98.0%";
+            initialGrades[compoundKey] = "92";
           }
         }
       });
@@ -129,12 +133,14 @@ export default function FacultyGradesPage() {
 
   const filteredStudents = students.filter(s => s.course === courseFilter);
 
-  const handleGradeChange = (id: string, val: string) => {
-    setGrades(prev => ({ ...prev, [id]: val }));
+  const handleGradeChange = (id: string, course: string, val: string) => {
+    const key = `${id}_${course}`;
+    setGrades(prev => ({ ...prev, [key]: val }));
   };
 
-  const handleAttendanceChange = (id: string, val: string) => {
-    setAttendance(prev => ({ ...prev, [id]: val }));
+  const handleAttendanceChange = (id: string, course: string, val: string) => {
+    const key = `${id}_${course}`;
+    setAttendance(prev => ({ ...prev, [key]: val }));
   };
 
   const handleQuickFill = () => {
@@ -142,11 +148,12 @@ export default function FacultyGradesPage() {
     const updatedA = { ...attendance };
 
     filteredStudents.forEach((s, idx) => {
-      if (!updatedG[s.id] || updatedG[s.id].trim() === "") {
-        updatedG[s.id] = idx === 0 ? "96" : idx === 1 ? "92" : "94";
+      const key = `${s.id}_${s.course}`;
+      if (!updatedG[key] || updatedG[key].trim() === "") {
+        updatedG[key] = idx === 0 ? "96" : idx === 1 ? "92" : "94";
       }
-      if (!updatedA[s.id] || updatedA[s.id].trim() === "") {
-        updatedA[s.id] = idx === 0 ? "98.4%" : idx === 1 ? "97.2%" : "99.1%";
+      if (!updatedA[key] || updatedA[key].trim() === "") {
+        updatedA[key] = idx === 0 ? "98.4%" : idx === 1 ? "97.2%" : "99.1%";
       }
     });
 
@@ -166,8 +173,9 @@ export default function FacultyGradesPage() {
     const teacherName = currentFaculty.fullName || "Prof. Maria Elena Santos";
 
     filteredStudents.forEach(s => {
-      const g = grades[s.id] ? grades[s.id].trim() : "";
-      const a = attendance[s.id] ? attendance[s.id].trim() : "98.4%";
+      const compoundKey = `${s.id}_${s.course}`;
+      const g = grades[compoundKey] ? grades[compoundKey].trim() : "";
+      const a = attendance[compoundKey] ? attendance[compoundKey].trim() : "98.4%";
 
       if (g) validGradesCount++;
 
@@ -189,15 +197,13 @@ export default function FacultyGradesPage() {
         status: "Verified • Dispatched"
       };
 
-      // Store by compound key and id for easy lookups
-      existingRoster[`${s.id}_${s.course}`] = record;
-      existingRoster[s.id] = record;
+      // Store only by compound key (studentId_course) to prevent cross-course grade bleed
+      existingRoster[compoundKey] = record;
 
-      // Special alias: If Janelle Gomez is LRN-001 or LRN-2026-48910
+      // Course-specific aliases for Janelle (registered as LRN-2026-48910 on student portal)
       if (s.name.toLowerCase().includes("janelle")) {
-        existingRoster["LRN-2026-48910"] = record;
-        existingRoster["LRN-2026-48910_Advanced Mathematics"] = record;
-        existingRoster["LRN-001"] = record;
+        existingRoster[`LRN-2026-48910_${s.course}`] = record;
+        existingRoster[`LRN-001_${s.course}`] = record;
       }
 
       submittedRecords.push(record);
@@ -262,6 +268,26 @@ export default function FacultyGradesPage() {
     window.dispatchEvent(new Event("storage"));
     window.dispatchEvent(new CustomEvent("edusphere_grade_dispatched", { detail: newNotification }));
 
+    // 6. Realtime Firebase Firestore Telemetry Dispatch
+    try {
+      filteredStudents.forEach(s => {
+        const compoundKey = `${s.id}_${s.course}`;
+        const g = grades[compoundKey];
+        const a = attendance[compoundKey] ?? "98.4%";
+        dispatchGradeToFirebase({
+          studentId: s.id,
+          course: s.course,
+          grade: g || "95",
+          attendance: a,
+          teacher: s.course === "Advanced Mathematics" ? "Prof. Maria Elena Santos" : s.course === "Physics 101" ? "Dr. Albert Ramos" : "Engr. David Tan"
+        });
+      });
+
+      sendNotificationToFirebase(newNotification);
+    } catch (err) {
+      console.warn("Could not dispatch to Firebase:", err);
+    }
+
     setDispatchSummary({
       count: validGradesCount || filteredStudents.length,
       avgAttendance: avgAttendanceStr,
@@ -274,16 +300,31 @@ export default function FacultyGradesPage() {
     }, 4000);
   };
 
+  /* Theme Initialization */
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("edusphere_theme");
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (saved === "dark" || (!saved && prefersDark)) {
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+        document.documentElement.classList.remove("dark");
+      }
+    } catch (e) {}
+  }, []);
+
   const iStyle: React.CSSProperties = {
     width: "100%",
     padding: "10px 14px",
     borderRadius: "12px",
-    border: "1px solid rgba(163,177,198,0.2)",
-    background: "#e0e5ec",
-    boxShadow: "inset 2px 2px 5px #a3b1c6, inset -2px -2px 5px #ffffff",
+    border: "1px solid var(--border-subtle)",
+    background: "var(--neu-input)",
+    boxShadow: "var(--neu-shadow-input)",
     fontFamily: "'Outfit',sans-serif",
     fontSize: "0.92rem",
-    color: "#1e293b",
+    color: "var(--text-title)",
     outline: "none",
     boxSizing: "border-box" as const,
   };
@@ -304,36 +345,44 @@ export default function FacultyGradesPage() {
   };
 
   return (
-    <div style={{ background: "#e0e5ec", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Outfit',sans-serif", color: "#2d3561" }}>
+    <div style={{ background: "var(--neu-bg)", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Outfit',sans-serif", color: "var(--text-body)", transition: "background 0.3s ease, color 0.3s ease" }}>
       <div style={{ maxWidth: "860px", margin: "0 auto" }}>
         
-        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "#475569", fontWeight: "700", fontSize: "0.9rem", marginBottom: "30px", padding: "8px 16px", borderRadius: "20px", background: "#e0e5ec", boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff" }}>
+        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "700", fontSize: "0.9rem", marginBottom: "30px", padding: "8px 16px", borderRadius: "20px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", border: "1px solid var(--border-subtle)" }}>
           <IconArrowLeft /> Back to Dashboard
         </Link>
 
-        <div style={{ background: "#e0e5ec", borderRadius: "24px", boxShadow: "10px 10px 22px #a3b1c6, -10px -10px 22px #ffffff", padding: "32px" }}>
+        <div style={{ background: "var(--neu-card)", borderRadius: "24px", boxShadow: "var(--neu-shadow-float)", border: "1px solid var(--border-card)", padding: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "8px" }}>
             <div>
-              <h1 style={{ fontSize: "2rem", fontWeight: "800", color: "#1e293b", margin: "0 0 6px" }}>Faculty Grade & Attendance Manager</h1>
-              <p style={{ fontSize: "0.9rem", color: "#64748b", margin: 0, lineHeight: "1.6" }}>
+              <h1 style={{ fontSize: "2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 6px" }}>Faculty Grade & Attendance Manager</h1>
+              <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", margin: 0, lineHeight: "1.6" }}>
                 Enter accurate final grades and verified attendance rates. Dispatching immediately notifies enrolled students and updates campus analytics.
               </p>
             </div>
             
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              style={{
-                ...minBtnStyle,
-                background: "#e0e5ec",
-                color: "#8b5cf6",
-                boxShadow: "3px 3px 6px #a3b1c6, -3px -3px 6px #ffffff",
-                fontSize: "0.82rem",
-                padding: "8px 16px"
-              }}
-            >
-              <IconSparkles /> Auto-fill Defaults
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "14px", background: "rgba(16,185,129,0.12)", color: "#10b981", fontSize: "0.75rem", fontWeight: "700" }}>
+                <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px #10b981" }} />
+                {isFirebaseConfigured() ? "Firebase Realtime: Active" : "Telemetry: Ready (Synced)"}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleQuickFill}
+                style={{
+                  ...minBtnStyle,
+                  background: "var(--neu-surface)",
+                  color: "#8b5cf6",
+                  boxShadow: "var(--neu-shadow-small)",
+                  border: "1px solid var(--border-subtle)",
+                  fontSize: "0.82rem",
+                  padding: "8px 16px"
+                }}
+              >
+                <IconSparkles /> Auto-fill Defaults
+              </button>
+            </div>
           </div>
 
           {/* Course Filter Bar */}
@@ -353,8 +402,8 @@ export default function FacultyGradesPage() {
           </div>
 
           {/* Roster Table */}
-          <div style={{ background: "#e0e5ec", borderRadius: "16px", boxShadow: "inset 4px 4px 10px #a3b1c6, inset -4px -4px 10px #ffffff", padding: "20px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", borderBottom: "1px solid rgba(163,177,198,0.3)", paddingBottom: "12px", marginBottom: "12px", fontWeight: "800", color: "#1e293b", fontSize: "0.82rem" }}>
+          <div style={{ background: "var(--neu-surface-pressed)", borderRadius: "16px", boxShadow: "var(--neu-shadow-pressed)", border: "1px solid var(--border-subtle)", padding: "20px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px", marginBottom: "12px", fontWeight: "800", color: "var(--text-title)", fontSize: "0.82rem" }}>
               <div>Student ID</div>
               <div>Student Name</div>
               <div style={{ textAlign: "center" }}>Attendance Rate</div>
@@ -364,13 +413,13 @@ export default function FacultyGradesPage() {
             
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {filteredStudents.length > 0 ? filteredStudents.map(s => {
-                const hasGrade = !!(grades[s.id] && grades[s.id].trim());
-                const attVal = attendance[s.id] || "98.4%";
+                const compoundKey = `${s.id}_${s.course}`;
+                const hasGrade = !!(grades[compoundKey] && grades[compoundKey].trim());
 
                 return (
-                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", alignItems: "center" }}>
-                    <div style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: "700" }}>{s.id}</div>
-                    <div style={{ fontSize: "0.88rem", fontWeight: "700", color: "#334155" }}>
+                  <div key={compoundKey} style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", alignItems: "center" }}>
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", fontWeight: "700" }}>{s.id}</div>
+                    <div style={{ fontSize: "0.88rem", fontWeight: "700", color: "var(--text-body)" }}>
                       {s.name}
                       {s.name.includes("Janelle") && (
                         <span style={{ marginLeft: "6px", fontSize: "0.68rem", background: "rgba(59,130,246,0.12)", color: "#2563eb", padding: "2px 6px", borderRadius: "8px", fontWeight: "700" }}>Demo Account</span>
@@ -380,8 +429,8 @@ export default function FacultyGradesPage() {
                       <input 
                         type="text" 
                         placeholder="e.g. 98.4%" 
-                        value={attendance[s.id] ?? "98.4%"}
-                        onChange={e => handleAttendanceChange(s.id, e.target.value)}
+                        value={attendance[compoundKey] ?? "98.4%"}
+                        onChange={e => handleAttendanceChange(s.id, s.course, e.target.value)}
                         style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#0284c7" }}
                       />
                     </div>
@@ -389,8 +438,8 @@ export default function FacultyGradesPage() {
                       <input 
                         type="text" 
                         placeholder="e.g. 95 or A" 
-                        value={grades[s.id] || ""}
-                        onChange={e => handleGradeChange(s.id, e.target.value)}
+                        value={grades[compoundKey] || ""}
+                        onChange={e => handleGradeChange(s.id, s.course, e.target.value)}
                         style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#10b981" }}
                       />
                     </div>
