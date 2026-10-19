@@ -1300,6 +1300,26 @@ export default function Home() {
               </span>
             </a>
 
+            {/* Faculty Gradebook Direct Link */}
+            <a
+              href="/faculty/grades"
+              style={{
+                padding: "6px 12px",
+                borderRadius: "16px",
+                textDecoration: "none",
+                color: "#10b981",
+                fontWeight: "700",
+                fontSize: "0.82rem",
+                transition: "all 0.2s",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+              title="Open Faculty Grade & Attendance Manager"
+            >
+              📊 Gradebook
+            </a>
+
             {/* Feature 3: Anonymous Counselor Button */}
             <button
               type="button"
@@ -1745,7 +1765,21 @@ export default function Home() {
               </button>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid var(--border-subtle)" }}>
+              <a
+                href="/faculty/grades"
+                style={{
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "0.84rem",
+                  fontWeight: "700",
+                  color: "#10b981"
+                }}
+              >
+                📊 Open Faculty Gradebook →
+              </a>
               <button
                 type="button"
                 onClick={() => setRolePopupOpen(false)}
@@ -1755,7 +1789,7 @@ export default function Home() {
                   boxShadow: "var(--neu-shadow-small)",
                   color: "var(--text-muted)",
                   fontSize: "0.82rem",
-                  padding: "7px 20px"
+                  padding: "7px 18px"
                 }}
               >
                 Close
