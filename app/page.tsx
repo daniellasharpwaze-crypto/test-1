@@ -393,7 +393,7 @@ export default function Home() {
         document.documentElement.removeAttribute("data-theme");
         document.documentElement.classList.remove("dark");
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const toggleTheme = () => {
@@ -409,12 +409,28 @@ export default function Home() {
           document.documentElement.classList.remove("dark");
           localStorage.setItem("edusphere_theme", "light");
         }
-      } catch (e) {}
+      } catch (e) { }
       return next;
     });
   };
   const [activeTab, setActiveTab] = useState<"student" | "faculty">("student");
   const [rolePopupOpen, setRolePopupOpen] = useState(false);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
+  const navMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navMenuRef.current && !navMenuRef.current.contains(event.target as Node)) {
+        setNavMenuOpen(false);
+      }
+    };
+    if (navMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [navMenuOpen]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [copiedPass, setCopiedPass] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
@@ -857,7 +873,7 @@ export default function Home() {
 
         try {
           saveStudentToFirebase(studentData);
-        } catch {}
+        } catch { }
       } catch (err) {
         console.error("Failed to save registered account to localStorage", err);
       }
@@ -1044,7 +1060,7 @@ export default function Home() {
 
         try {
           saveFacultyToFirebase(newCred);
-        } catch {}
+        } catch { }
       } catch (err) {
         console.error("Failed to save registered admin account to localStorage", err);
       }
@@ -1271,79 +1287,249 @@ export default function Home() {
             </div>
           </a>
 
-          {/* Desktop Nav Links (Modules, Safety, Testimonials for Everyone; Feedback for Students Only) */}
-          <div className="nav-links-desktop" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <a href="/#modules" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Modules</a>
-            <a href="/#safety" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Campus Safety</a>
-            <a href="/#testimonials" style={{ padding: "6px 12px", borderRadius: "16px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "600", fontSize: "0.82rem", transition: "all 0.2s" }}>Testimonials</a>
-
-            {/* Feedback: Restricted to Students Only */}
-            <a
-              href="/feedback"
-              style={{
-                padding: "6px 12px",
-                borderRadius: "16px",
-                textDecoration: "none",
-                color: isStudent ? "#3b82f6" : "var(--text-muted)",
-                fontWeight: "700",
-                fontSize: "0.82rem",
-                transition: "all 0.2s",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px"
-              }}
-              title={isStudent ? "Student Feedback Portal" : "Student authorization required to view feedback"}
-            >
-              Feedback
-              <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "8px", background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)", color: isStudent ? "#3b82f6" : "var(--text-muted)", fontWeight: "700" }}>
-                {isStudent ? "Unlocked" : "Students Only"}
-              </span>
-            </a>
-
-            {/* Faculty Gradebook Direct Link */}
-            <a
-              href="/faculty/grades"
-              style={{
-                padding: "6px 12px",
-                borderRadius: "16px",
-                textDecoration: "none",
-                color: "#10b981",
-                fontWeight: "700",
-                fontSize: "0.82rem",
-                transition: "all 0.2s",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px"
-              }}
-              title="Open Faculty Grade & Attendance Manager"
-            >
-              📊 Gradebook
-            </a>
-
-            {/* Feature 3: Anonymous Counselor Button */}
+          {/* MINIMIZED CAMPUS NAVIGATION POPUP BUTTON (Styled like Student & Faculty Portal button) */}
+          <div ref={navMenuRef} style={{ position: "relative" }}>
             <button
               type="button"
-              onClick={() => {
-                setCounselorSubmittedTicket(null);
-                setCounselorOpen(true);
-              }}
+              onClick={() => setNavMenuOpen(prev => !prev)}
               style={{
-                background: "none",
-                border: "none",
-                padding: "6px 12px",
-                borderRadius: "16px",
-                color: "#ef4444",
+                ...minBtnStyle,
+                background: accentGrad,
+                color: "white",
+                boxShadow: `3px 3px 8px ${accentColor}44, -2px -2px 6px rgba(255,255,255,0.7)`,
+                padding: "8px 16px",
+                fontSize: "0.84rem",
                 fontWeight: "700",
-                fontSize: "0.82rem",
-                cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "5px"
+                gap: "6px",
+                cursor: "pointer"
               }}
-              title="Report an incident confidentially to school counselors"
+              title="Click to view all navigation links"
+              aria-label="Campus Navigation Menu"
+              aria-expanded={navMenuOpen}
             >
-              🛡️ Counselor Box
+              <IconMenu />
+              <span>Campus Navigation</span>
+              <span style={{ transform: navMenuOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s ease", display: "inline-flex", alignItems: "center" }}>
+                <IconChevronDown size={13} />
+              </span>
             </button>
+
+            {/* Dropdown Menu with all buttons */}
+            {navMenuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "48px",
+                  left: 0,
+                  width: "290px",
+                  background: "var(--neu-surface)",
+                  borderRadius: "20px",
+                  boxShadow: "var(--neu-shadow-float)",
+                  border: "1px solid var(--border-subtle)",
+                  padding: "12px",
+                  zIndex: 9999,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px"
+                }}
+              >
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "4px 8px 8px",
+                  borderBottom: "1px solid var(--border-subtle)",
+                  fontSize: "0.74rem",
+                  fontWeight: "800",
+                  color: "var(--text-muted)",
+                  letterSpacing: "0.5px",
+                  textTransform: "uppercase"
+                }}>
+                  <span>Campus Network</span>
+                  <span style={{ color: accentColor }}>● Active</span>
+                </div>
+
+                {/* Modules */}
+                <a
+                  href="/#modules"
+                  onClick={() => setNavMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "9px 12px",
+                    borderRadius: "14px",
+                    textDecoration: "none",
+                    color: "var(--text-title)",
+                    fontWeight: "600",
+                    fontSize: "0.86rem",
+                    transition: "all 0.2s",
+                    background: "var(--neu-surface)",
+                    boxShadow: "var(--neu-shadow-small)"
+                  }}
+                >
+                  <span style={{ fontSize: "1.1rem" }}>📘</span>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: "700" }}>Modules</div>
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Classrooms & Syllabus</div>
+                  </div>
+                </a>
+
+                {/* Campus Safety */}
+                <a
+                  href="/#safety"
+                  onClick={() => setNavMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "9px 12px",
+                    borderRadius: "14px",
+                    textDecoration: "none",
+                    color: "var(--text-title)",
+                    fontWeight: "600",
+                    fontSize: "0.86rem",
+                    transition: "all 0.2s",
+                    background: "var(--neu-surface)",
+                    boxShadow: "var(--neu-shadow-small)"
+                  }}
+                >
+                  <span style={{ fontSize: "1.1rem" }}>🛡️</span>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: "700" }}>Campus Safety</div>
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Gate alerts & clinic pass</div>
+                  </div>
+                </a>
+
+                {/* Testimonials */}
+                <a
+                  href="/#testimonials"
+                  onClick={() => setNavMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "9px 12px",
+                    borderRadius: "14px",
+                    textDecoration: "none",
+                    color: "var(--text-title)",
+                    fontWeight: "600",
+                    fontSize: "0.86rem",
+                    transition: "all 0.2s",
+                    background: "var(--neu-surface)",
+                    boxShadow: "var(--neu-shadow-small)"
+                  }}
+                >
+                  <span style={{ fontSize: "1.1rem" }}>💬</span>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: "700" }}>Testimonials</div>
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Student & Faculty Reviews</div>
+                  </div>
+                </a>
+
+                {/* Feedback */}
+                <a
+                  href="/feedback"
+                  onClick={() => setNavMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "9px 12px",
+                    borderRadius: "14px",
+                    textDecoration: "none",
+                    color: isStudent ? "#3b82f6" : "var(--text-muted)",
+                    fontWeight: "700",
+                    fontSize: "0.86rem",
+                    transition: "all 0.2s",
+                    background: "var(--neu-surface)",
+                    boxShadow: "var(--neu-shadow-small)"
+                  }}
+                  title={isStudent ? "Student Feedback Portal" : "Student authorization required to view feedback"}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "1.1rem" }}>📝</span>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: "700" }}>Feedback</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Student Suggestions Console</div>
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: "0.66rem",
+                    padding: "2px 7px",
+                    borderRadius: "8px",
+                    background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)",
+                    color: isStudent ? "#3b82f6" : "var(--text-muted)",
+                    fontWeight: "700"
+                  }}>
+                    {isStudent ? "Unlocked" : "Students Only"}
+                  </span>
+                </a>
+
+                {/* Faculty Gradebook Direct Link */}
+                <a
+                  href="/faculty/grades"
+                  onClick={() => setNavMenuOpen(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "9px 12px",
+                    borderRadius: "14px",
+                    textDecoration: "none",
+                    color: "#10b981",
+                    fontWeight: "700",
+                    fontSize: "0.86rem",
+                    transition: "all 0.2s",
+                    background: "var(--neu-surface)",
+                    boxShadow: "var(--neu-shadow-small)"
+                  }}
+                  title="Open Faculty Grade & Attendance Manager"
+                >
+                  <span style={{ fontSize: "1.1rem" }}>📊</span>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: "700", color: "#10b981" }}>Gradebook</div>
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Faculty telemetry & records</div>
+                  </div>
+                </a>
+
+                {/* Anonymous Counselor Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNavMenuOpen(false);
+                    setCounselorSubmittedTicket(null);
+                    setCounselorOpen(true);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "9px 12px",
+                    borderRadius: "14px",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#ef4444",
+                    fontWeight: "700",
+                    fontSize: "0.86rem",
+                    transition: "all 0.2s",
+                    background: "var(--neu-surface)",
+                    boxShadow: "var(--neu-shadow-small)",
+                    textAlign: "left",
+                    width: "100%"
+                  }}
+                  title="Report an incident confidentially to school counselors"
+                >
+                  <span style={{ fontSize: "1.1rem" }}>🛡️</span>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: "700", color: "#ef4444" }}>Counselor Box</div>
+                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>100% Confidential Reports</div>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* THE ONE POPUP BUTTON (MINIMAL) - Turns into Sign Out when student or faculty is registered/logged in */}
@@ -3473,3 +3659,4 @@ export default function Home() {
     </div>
   );
 }
+
