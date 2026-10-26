@@ -7,6 +7,7 @@ import {
   saveStudentToFirebase,
   saveFacultyToFirebase,
   saveCounselorReportToFirebase,
+  saveClubApplicationToFirebase,
   isFirebaseConfigured
 } from "@/lib/firebase";
 
@@ -529,6 +530,21 @@ export default function Home() {
   });
   const [counselorSubmittedTicket, setCounselorSubmittedTicket] = useState<string | null>(null);
   const [counselorSubmitting, setCounselorSubmitting] = useState(false);
+
+  /* Feature 4: Student Organizations & Clubs Directory State */
+  const [selectedClubForJoin, setSelectedClubForJoin] = useState<any | null>(null);
+  const [clubCategoryFilter, setClubCategoryFilter] = useState("All");
+  const [clubSearchTerm, setClubSearchTerm] = useState("");
+  const [clubJoinForm, setClubJoinForm] = useState({
+    studentName: "",
+    studentEmail: "",
+    gradeSection: "",
+    experience: "",
+    statement: ""
+  });
+  const [clubJoinSubmitting, setClubJoinSubmitting] = useState(false);
+  const [clubJoinSuccess, setClubJoinSuccess] = useState<string | null>(null);
+  const [joinedClubIds, setJoinedClubIds] = useState<string[]>([]);
 
   /* Function to sync live grades, attendance, and notifications */
   const syncGradeData = useCallback((notify = false, incomingNotif?: any) => {
@@ -1270,6 +1286,161 @@ export default function Home() {
     }
   ];
 
+  const campusClubs = [
+    {
+      id: "robotics-ai",
+      name: "Robotics & Artificial Intelligence Guild",
+      category: "STEM & Tech",
+      badge: "National Finalist",
+      icon: "🤖",
+      color: "#3b82f6",
+      desc: "Designing autonomous rovers, IoT sensors, and participating in regional robotics hackathons and maker faires.",
+      membersCount: 48,
+      meetingSchedule: "Wednesdays & Fridays, 4:00 PM",
+      room: "Tech Innovation Lab 204",
+      president: {
+        name: "Marcus Gabriel Tan",
+        grade: "Grade 12 STEM",
+        email: "marcus.tan@students.edusphere.edu",
+        avatar: "MT"
+      },
+      adviser: "Engr. David Santos",
+      upcomingEvent: {
+        title: "National RoboCup Trial & Drone Coding Workshop",
+        date: "Nov 12, 2026",
+        venue: "Makerspace Hall B"
+      }
+    },
+    {
+      id: "supreme-student-council",
+      name: "Supreme Student Council (SSC)",
+      category: "Leadership",
+      badge: "Official Governance",
+      icon: "🏛️",
+      color: "#8b5cf6",
+      desc: "The premier student representation body championing student rights, campus wellness programs, and student-led initiatives.",
+      membersCount: 32,
+      meetingSchedule: "Mondays, 4:30 PM",
+      room: "SSC Council Chamber (Admin Wing)",
+      president: {
+        name: "Kirsten Andrea Castaneda",
+        grade: "Grade 11 HUMSS",
+        email: "kirsten.ssc@students.edusphere.edu",
+        avatar: "KC"
+      },
+      adviser: "Dean Lourdes Ramos",
+      upcomingEvent: {
+        title: "General Student Assembly & Open Forum",
+        date: "Nov 08, 2026",
+        venue: "University Auditorium"
+      }
+    },
+    {
+      id: "debate-society",
+      name: "Dialectics & Debate Society",
+      category: "Academic & Speech",
+      badge: "Championship Circuit",
+      icon: "⚖️",
+      color: "#f59e0b",
+      desc: "Competitive parliamentary debate, public speaking training, and inter-school Model United Nations delegations.",
+      membersCount: 26,
+      meetingSchedule: "Tuesdays & Thursdays, 4:00 PM",
+      room: "Speech & Audio-Visual Room 3",
+      president: {
+        name: "Alyssa Danielle Ocampo",
+        grade: "Grade 12 ABM",
+        email: "alyssa.debate@students.edusphere.edu",
+        avatar: "AO"
+      },
+      adviser: "Prof. Victor Manalo",
+      upcomingEvent: {
+        title: "Inter-High Parliamentary Interschool Cup",
+        date: "Nov 20, 2026",
+        venue: "Moot Court Hall"
+      }
+    },
+    {
+      id: "theater-arts",
+      name: "Dramatis Theater & Performing Arts",
+      category: "Arts & Culture",
+      badge: "Annual Play Production",
+      icon: "🎭",
+      color: "#ec4899",
+      desc: "Stage acting, scriptwriting, musical accompaniment, and technical set/lighting design for major school theatre showcases.",
+      membersCount: 54,
+      meetingSchedule: "Tuesdays & Fridays, 4:30 PM",
+      room: "Main Cultural Auditorium",
+      president: {
+        name: "Julian Kyle Herrera",
+        grade: "Grade 11 Arts Track",
+        email: "julian.theater@students.edusphere.edu",
+        avatar: "JH"
+      },
+      adviser: "Ms. Regina Villanueva",
+      upcomingEvent: {
+        title: "Winter Musical Auditions & Stagehand Casting",
+        date: "Nov 15, 2026",
+        venue: "Black Box Studio"
+      }
+    },
+    {
+      id: "red-cross-youth",
+      name: "Red Cross Youth & First Aid Corps",
+      category: "Community & Health",
+      badge: "Certified Life Savers",
+      icon: "🩺",
+      color: "#ef4444",
+      desc: "Certified basic life support, disaster preparedness, campus first aid dispatch, and humanitarian blood drives.",
+      membersCount: 65,
+      meetingSchedule: "Thursdays, 3:30 PM",
+      room: "Campus Health Services Annex",
+      president: {
+        name: "Chloe Bianca Rivera",
+        grade: "Grade 12 Health Allied",
+        email: "chloe.redcross@students.edusphere.edu",
+        avatar: "CR"
+      },
+      adviser: "Nurse Elena Bautista, RN",
+      upcomingEvent: {
+        title: "Campus CPR & Emergency Triage Certification",
+        date: "Nov 18, 2026",
+        venue: "Gymnasium Health Pavilion"
+      }
+    },
+    {
+      id: "varsity-athletics",
+      name: "Titans Varsity Athletics & Sports League",
+      category: "Sports & Fitness",
+      badge: "League Champions",
+      icon: "🏆",
+      color: "#10b981",
+      desc: "Basketball, Volleyball, Badminton, and Track disciplines promoting sportsmanship, athletic excellence, and teamwork.",
+      membersCount: 78,
+      meetingSchedule: "Daily Training, 5:00 AM / 4:30 PM",
+      room: "Athletics Complex & Fitness Center",
+      president: {
+        name: "Rafael Joaquin Gomez",
+        grade: "Grade 12 Sports Track",
+        email: "rafael.varsity@students.edusphere.edu",
+        avatar: "RG"
+      },
+      adviser: "Coach Antonio Perez",
+      upcomingEvent: {
+        title: "Inter-Campus Intramural Championship Tryouts",
+        date: "Nov 25, 2026",
+        venue: "Main Covered Court"
+      }
+    }
+  ];
+
+  /* Hydrate joined clubs list */
+  useEffect(() => {
+    try {
+      const storedClubs = JSON.parse(localStorage.getItem("edusphere_joined_club_ids") || "[]");
+      setJoinedClubIds(storedClubs);
+    } catch { }
+  }, []);
+
   return (
     <div data-theme={isDark ? "dark" : "light"} style={{ background: "var(--neu-bg)", minHeight: "100vh", fontFamily: "'Outfit',sans-serif", color: "var(--text-body)", overflowX: "hidden", transition: "background 0.3s ease, color 0.3s ease" }}>
 
@@ -1287,253 +1458,7 @@ export default function Home() {
             </div>
           </a>
 
-          {/* MINIMIZED CAMPUS NAVIGATION POPUP BUTTON (Styled like Student & Faculty Portal button) */}
-          <div ref={navMenuRef} style={{ position: "relative" }}>
-            <button
-              type="button"
-              onClick={() => setNavMenuOpen(prev => !prev)}
-              style={{
-                ...minBtnStyle,
-                background: accentGrad,
-                color: "white",
-                boxShadow: `3px 3px 8px ${accentColor}44, -2px -2px 6px rgba(255,255,255,0.7)`,
-                padding: "8px 16px",
-                fontSize: "0.84rem",
-                fontWeight: "700",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                cursor: "pointer"
-              }}
-              title="Click to view all navigation links"
-              aria-label="Campus Navigation Menu"
-              aria-expanded={navMenuOpen}
-            >
-              <IconMenu />
-              <span>Campus Navigation</span>
-              <span style={{ transform: navMenuOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s ease", display: "inline-flex", alignItems: "center" }}>
-                <IconChevronDown size={13} />
-              </span>
-            </button>
-
-            {/* Dropdown Menu with all buttons */}
-            {navMenuOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "48px",
-                  left: 0,
-                  width: "290px",
-                  background: "var(--neu-surface)",
-                  borderRadius: "20px",
-                  boxShadow: "var(--neu-shadow-float)",
-                  border: "1px solid var(--border-subtle)",
-                  padding: "12px",
-                  zIndex: 9999,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px"
-                }}
-              >
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "4px 8px 8px",
-                  borderBottom: "1px solid var(--border-subtle)",
-                  fontSize: "0.74rem",
-                  fontWeight: "800",
-                  color: "var(--text-muted)",
-                  letterSpacing: "0.5px",
-                  textTransform: "uppercase"
-                }}>
-                  <span>Campus Network</span>
-                  <span style={{ color: accentColor }}>● Active</span>
-                </div>
-
-                {/* Modules */}
-                <a
-                  href="/#modules"
-                  onClick={() => setNavMenuOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "9px 12px",
-                    borderRadius: "14px",
-                    textDecoration: "none",
-                    color: "var(--text-title)",
-                    fontWeight: "600",
-                    fontSize: "0.86rem",
-                    transition: "all 0.2s",
-                    background: "var(--neu-surface)",
-                    boxShadow: "var(--neu-shadow-small)"
-                  }}
-                >
-                  <span style={{ fontSize: "1.1rem" }}>📘</span>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: "700" }}>Modules</div>
-                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Classrooms & Syllabus</div>
-                  </div>
-                </a>
-
-                {/* Campus Safety */}
-                <a
-                  href="/#safety"
-                  onClick={() => setNavMenuOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "9px 12px",
-                    borderRadius: "14px",
-                    textDecoration: "none",
-                    color: "var(--text-title)",
-                    fontWeight: "600",
-                    fontSize: "0.86rem",
-                    transition: "all 0.2s",
-                    background: "var(--neu-surface)",
-                    boxShadow: "var(--neu-shadow-small)"
-                  }}
-                >
-                  <span style={{ fontSize: "1.1rem" }}>🛡️</span>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: "700" }}>Campus Safety</div>
-                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Gate alerts & clinic pass</div>
-                  </div>
-                </a>
-
-                {/* Testimonials */}
-                <a
-                  href="/#testimonials"
-                  onClick={() => setNavMenuOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "9px 12px",
-                    borderRadius: "14px",
-                    textDecoration: "none",
-                    color: "var(--text-title)",
-                    fontWeight: "600",
-                    fontSize: "0.86rem",
-                    transition: "all 0.2s",
-                    background: "var(--neu-surface)",
-                    boxShadow: "var(--neu-shadow-small)"
-                  }}
-                >
-                  <span style={{ fontSize: "1.1rem" }}>💬</span>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: "700" }}>Testimonials</div>
-                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Student & Faculty Reviews</div>
-                  </div>
-                </a>
-
-                {/* Feedback */}
-                <a
-                  href="/feedback"
-                  onClick={() => setNavMenuOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "9px 12px",
-                    borderRadius: "14px",
-                    textDecoration: "none",
-                    color: isStudent ? "#3b82f6" : "var(--text-muted)",
-                    fontWeight: "700",
-                    fontSize: "0.86rem",
-                    transition: "all 0.2s",
-                    background: "var(--neu-surface)",
-                    boxShadow: "var(--neu-shadow-small)"
-                  }}
-                  title={isStudent ? "Student Feedback Portal" : "Student authorization required to view feedback"}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "1.1rem" }}>📝</span>
-                    <div style={{ textAlign: "left" }}>
-                      <div style={{ fontWeight: "700" }}>Feedback</div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Student Suggestions Console</div>
-                    </div>
-                  </div>
-                  <span style={{
-                    fontSize: "0.66rem",
-                    padding: "2px 7px",
-                    borderRadius: "8px",
-                    background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)",
-                    color: isStudent ? "#3b82f6" : "var(--text-muted)",
-                    fontWeight: "700"
-                  }}>
-                    {isStudent ? "Unlocked" : "Students Only"}
-                  </span>
-                </a>
-
-                {/* Faculty Gradebook Direct Link */}
-                <a
-                  href="/faculty/grades"
-                  onClick={() => setNavMenuOpen(false)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "9px 12px",
-                    borderRadius: "14px",
-                    textDecoration: "none",
-                    color: "#10b981",
-                    fontWeight: "700",
-                    fontSize: "0.86rem",
-                    transition: "all 0.2s",
-                    background: "var(--neu-surface)",
-                    boxShadow: "var(--neu-shadow-small)"
-                  }}
-                  title="Open Faculty Grade & Attendance Manager"
-                >
-                  <span style={{ fontSize: "1.1rem" }}>📊</span>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: "700", color: "#10b981" }}>Gradebook</div>
-                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Faculty telemetry & records</div>
-                  </div>
-                </a>
-
-                {/* Anonymous Counselor Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNavMenuOpen(false);
-                    setCounselorSubmittedTicket(null);
-                    setCounselorOpen(true);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "9px 12px",
-                    borderRadius: "14px",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#ef4444",
-                    fontWeight: "700",
-                    fontSize: "0.86rem",
-                    transition: "all 0.2s",
-                    background: "var(--neu-surface)",
-                    boxShadow: "var(--neu-shadow-small)",
-                    textAlign: "left",
-                    width: "100%"
-                  }}
-                  title="Report an incident confidentially to school counselors"
-                >
-                  <span style={{ fontSize: "1.1rem" }}>🛡️</span>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: "700", color: "#ef4444" }}>Counselor Box</div>
-                    <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>100% Confidential Reports</div>
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* THE ONE POPUP BUTTON (MINIMAL) - Turns into Sign Out when student or faculty is registered/logged in */}
-          {/* Navbar Actions: Theme Toggle + Notification Bell + Portal Selector / Sign Out */}
+          {/* Navbar Actions: Theme Toggle + Notification Bell + Portal Selector / Sign Out + Campus Navigation */}
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             {/* Theme Toggle Button */}
             <button
@@ -1721,6 +1646,285 @@ export default function Home() {
               </button>
             )}
 
+            {/* MINIMIZED CAMPUS NAVIGATION POPUP BUTTON (Placed on the right side of Student Portal) */}
+            <div ref={navMenuRef} style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setNavMenuOpen(prev => !prev)}
+                style={{
+                  ...minBtnStyle,
+                  background: accentGrad,
+                  color: "white",
+                  boxShadow: `3px 3px 8px ${accentColor}44, -2px -2px 6px rgba(255,255,255,0.7)`,
+                  padding: "8px 16px",
+                  fontSize: "0.84rem",
+                  fontWeight: "700",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  cursor: "pointer"
+                }}
+                title="Click to view all navigation links"
+                aria-label="Campus Navigation Menu"
+                aria-expanded={navMenuOpen}
+              >
+                <IconMenu />
+                <span>Campus Navigation</span>
+                <span style={{ transform: navMenuOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s ease", display: "inline-flex", alignItems: "center" }}>
+                  <IconChevronDown size={13} />
+                </span>
+              </button>
+
+              {/* Dropdown Menu with all buttons */}
+              {navMenuOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "48px",
+                    right: 0,
+                    width: "290px",
+                    background: "var(--neu-surface)",
+                    borderRadius: "20px",
+                    boxShadow: "var(--neu-shadow-float)",
+                    border: "1px solid var(--border-subtle)",
+                    padding: "12px",
+                    zIndex: 9999,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px"
+                  }}
+                >
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "4px 8px 8px",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    fontSize: "0.74rem",
+                    fontWeight: "800",
+                    color: "var(--text-muted)",
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase"
+                  }}>
+                    <span>Campus Network</span>
+                    <span style={{ color: accentColor }}>● Active</span>
+                  </div>
+
+                  {/* Modules */}
+                  <a
+                    href="/#modules"
+                    onClick={() => setNavMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "9px 12px",
+                      borderRadius: "14px",
+                      textDecoration: "none",
+                      color: "var(--text-title)",
+                      fontWeight: "600",
+                      fontSize: "0.86rem",
+                      transition: "all 0.2s",
+                      background: "var(--neu-surface)",
+                      boxShadow: "var(--neu-shadow-small)"
+                    }}
+                  >
+                    <span style={{ fontSize: "1.1rem" }}>📘</span>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: "700" }}>Modules</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Classrooms & Syllabus</div>
+                    </div>
+                  </a>
+
+                  {/* Campus Safety */}
+                  <a
+                    href="/#safety"
+                    onClick={() => setNavMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "9px 12px",
+                      borderRadius: "14px",
+                      textDecoration: "none",
+                      color: "var(--text-title)",
+                      fontWeight: "600",
+                      fontSize: "0.86rem",
+                      transition: "all 0.2s",
+                      background: "var(--neu-surface)",
+                      boxShadow: "var(--neu-shadow-small)"
+                    }}
+                  >
+                    <span style={{ fontSize: "1.1rem" }}>🛡️</span>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: "700" }}>Campus Safety</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Gate alerts & clinic pass</div>
+                    </div>
+                  </a>
+
+                  {/* Campus Clubs & Student Orgs */}
+                  <a
+                    href="/#clubs"
+                    onClick={(e) => {
+                      setNavMenuOpen(false);
+                      const el = document.getElementById("clubs");
+                      if (el) {
+                        e.preventDefault();
+                        el.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "9px 12px",
+                      borderRadius: "14px",
+                      textDecoration: "none",
+                      color: "var(--text-title)",
+                      fontWeight: "600",
+                      fontSize: "0.86rem",
+                      transition: "all 0.2s",
+                      background: "var(--neu-surface)",
+                      boxShadow: "var(--neu-shadow-small)",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <span style={{ fontSize: "1.1rem" }}>🏆</span>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: "700" }}>Clubs & Guilds</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Student Organizations Directory</div>
+                    </div>
+                  </a>
+
+                  {/* Testimonials */}
+                  <a
+                    href="/#testimonials"
+                    onClick={() => setNavMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "9px 12px",
+                      borderRadius: "14px",
+                      textDecoration: "none",
+                      color: "var(--text-title)",
+                      fontWeight: "600",
+                      fontSize: "0.86rem",
+                      transition: "all 0.2s",
+                      background: "var(--neu-surface)",
+                      boxShadow: "var(--neu-shadow-small)"
+                    }}
+                  >
+                    <span style={{ fontSize: "1.1rem" }}>💬</span>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: "700" }}>Testimonials</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Student & Faculty Reviews</div>
+                    </div>
+                  </a>
+
+                  {/* Feedback */}
+                  <a
+                    href="/feedback"
+                    onClick={() => setNavMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "9px 12px",
+                      borderRadius: "14px",
+                      textDecoration: "none",
+                      color: isStudent ? "#3b82f6" : "var(--text-muted)",
+                      fontWeight: "700",
+                      fontSize: "0.86rem",
+                      transition: "all 0.2s",
+                      background: "var(--neu-surface)",
+                      boxShadow: "var(--neu-shadow-small)"
+                    }}
+                    title={isStudent ? "Student Feedback Portal" : "Student authorization required to view feedback"}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{ fontSize: "1.1rem" }}>📝</span>
+                      <div style={{ textAlign: "left" }}>
+                        <div style={{ fontWeight: "700" }}>Feedback</div>
+                        <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Student Suggestions Console</div>
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: "0.66rem",
+                      padding: "2px 7px",
+                      borderRadius: "8px",
+                      background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)",
+                      color: isStudent ? "#3b82f6" : "var(--text-muted)",
+                      fontWeight: "700"
+                    }}>
+                      {isStudent ? "Unlocked" : "Students Only"}
+                    </span>
+                  </a>
+
+                  {/* Faculty Gradebook Direct Link */}
+                  <a
+                    href="/faculty/grades"
+                    onClick={() => setNavMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "9px 12px",
+                      borderRadius: "14px",
+                      textDecoration: "none",
+                      color: "#10b981",
+                      fontWeight: "700",
+                      fontSize: "0.86rem",
+                      transition: "all 0.2s",
+                      background: "var(--neu-surface)",
+                      boxShadow: "var(--neu-shadow-small)"
+                    }}
+                    title="Open Faculty Grade & Attendance Manager"
+                  >
+                    <span style={{ fontSize: "1.1rem" }}>📊</span>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: "700", color: "#10b981" }}>Gradebook</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Faculty telemetry & records</div>
+                    </div>
+                  </a>
+
+                  {/* Anonymous Counselor Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNavMenuOpen(false);
+                      setCounselorSubmittedTicket(null);
+                      setCounselorOpen(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "9px 12px",
+                      borderRadius: "14px",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#ef4444",
+                      fontWeight: "700",
+                      fontSize: "0.86rem",
+                      transition: "all 0.2s",
+                      background: "var(--neu-surface)",
+                      boxShadow: "var(--neu-shadow-small)",
+                      textAlign: "left",
+                      width: "100%"
+                    }}
+                    title="Report an incident confidentially to school counselors"
+                  >
+                    <span style={{ fontSize: "1.1rem" }}>🛡️</span>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: "700", color: "#ef4444" }}>Counselor Box</div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>100% Confidential Reports</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Mobile Hamburger toggle */}
             <button
               type="button"
@@ -1750,7 +1954,12 @@ export default function Home() {
       {/* Mobile Menu Drawer */}
       {mobileOpen && (
         <div style={{ position: "fixed", inset: 0, top: "60px", zIndex: 99, background: "var(--neu-nav)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 20px", gap: "12px" }}>
-          {[{ label: "Academic Modules", href: "#modules" }, { label: "Campus Safety", href: "#safety" }, { label: "School Community", href: "#testimonials" }].map(item => (
+          {[
+            { label: "Academic Modules", href: "#modules" },
+            { label: "Campus Safety", href: "#safety" },
+            { label: "Clubs & Guilds", href: "#clubs" },
+            { label: "School Community", href: "#testimonials" }
+          ].map(item => (
             <a key={item.label} href={item.href} onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "280px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: "var(--text-title)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)" }}>
               {item.label}
             </a>
@@ -3190,6 +3399,321 @@ export default function Home() {
         </section>
       </ScrollReveal>
 
+      {/* ===== STUDENT ORGANIZATIONS & CLUBS DIRECTORY ===== */}
+      <ScrollReveal delay={0.08}>
+        <section id="clubs" style={{ padding: "40px 1rem 30px", maxWidth: "1200px", margin: "0 auto", scrollMarginTop: "80px" }}>
+          {/* Section Header */}
+          <div style={{ textAlign: "center", marginBottom: "26px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 14px", borderRadius: "30px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", fontSize: "0.7rem", fontWeight: "700", color: "#3b82f6", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>
+              <IconSparkles size={14} /> Co-Curricular & Guild Network
+            </div>
+            <h2 style={{ fontSize: "2rem", fontWeight: "800", color: "var(--text-title)", letterSpacing: "-0.6px", marginBottom: "8px" }}>
+              Student Organizations & Guilds Directory
+            </h2>
+            <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", maxWidth: "620px", margin: "0 auto", lineHeight: "1.6" }}>
+              Find your passion, join championship-caliber teams, connect with club presidents, and register with one click directly into your student pass.
+            </p>
+          </div>
+
+          {/* Search & Category Filter Pills */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+              {/* Category Pills */}
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                {["All", "STEM & Tech", "Leadership", "Academic & Speech", "Arts & Culture", "Community & Health", "Sports & Fitness"].map(cat => {
+                  const active = clubCategoryFilter === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setClubCategoryFilter(cat)}
+                      style={{
+                        ...minBtnStyle,
+                        padding: "6px 14px",
+                        fontSize: "0.78rem",
+                        fontWeight: "700",
+                        background: active ? accentGrad : "var(--neu-surface)",
+                        color: active ? "white" : "var(--text-muted)",
+                        boxShadow: active ? `3px 3px 8px ${accentColor}44` : "var(--neu-shadow-small)",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search Bar */}
+              <div style={{ position: "relative", minWidth: "240px", flex: "1 1 auto", maxWidth: "320px" }}>
+                <input
+                  type="text"
+                  placeholder="Search clubs, adviser, or events..."
+                  value={clubSearchTerm}
+                  onChange={e => setClubSearchTerm(e.target.value)}
+                  style={{
+                    ...iStyle(),
+                    padding: "8px 14px 8px 34px",
+                    fontSize: "0.82rem",
+                    borderRadius: "14px",
+                    width: "100%"
+                  }}
+                />
+                <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                  🔍
+                </span>
+                {clubSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setClubSearchTerm("")}
+                    style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8rem" }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Clubs Grid */}
+          {(() => {
+            const filtered = campusClubs.filter(club => {
+              const matchesCat = clubCategoryFilter === "All" || club.category === clubCategoryFilter;
+              const matchesSearch = !clubSearchTerm.trim() ||
+                club.name.toLowerCase().includes(clubSearchTerm.toLowerCase()) ||
+                club.desc.toLowerCase().includes(clubSearchTerm.toLowerCase()) ||
+                club.president.name.toLowerCase().includes(clubSearchTerm.toLowerCase()) ||
+                club.upcomingEvent.title.toLowerCase().includes(clubSearchTerm.toLowerCase());
+              return matchesCat && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div style={{ textAlign: "center", padding: "48px 20px", background: "var(--neu-surface)", borderRadius: "20px", boxShadow: "var(--neu-shadow-small)" }}>
+                  <div style={{ fontSize: "2.4rem", marginBottom: "8px" }}>🔍</div>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "4px" }}>No organizations found</h3>
+                  <p style={{ fontSize: "0.84rem", color: "var(--text-muted)" }}>Try searching for another keyword or selecting "All" categories.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setClubCategoryFilter("All"); setClubSearchTerm(""); }}
+                    style={{ ...minBtnStyle, background: accentGrad, color: "white", marginTop: "12px", padding: "7px 16px", fontSize: "0.8rem" }}
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "20px" }}>
+                {filtered.map(club => {
+                  const isJoined = joinedClubIds.includes(club.id);
+                  return (
+                    <div
+                      key={club.id}
+                      style={{
+                        background: "var(--neu-card)",
+                        borderRadius: "22px",
+                        padding: "24px 22px",
+                        boxShadow: "var(--neu-shadow-flat)",
+                        border: "1px solid var(--border-card)",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                        position: "relative",
+                        overflow: "hidden"
+                      }}
+                    >
+                      {/* Top Bar with Icon & Category */}
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <div style={{
+                              width: "48px",
+                              height: "48px",
+                              borderRadius: "14px",
+                              background: "var(--neu-surface)",
+                              boxShadow: "var(--neu-shadow-small)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "1.6rem",
+                              flexShrink: 0
+                            }}>
+                              {club.icon}
+                            </div>
+                            <div>
+                              <span style={{
+                                fontSize: "0.68rem",
+                                fontWeight: "800",
+                                color: club.color,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.6px",
+                                display: "block"
+                              }}>
+                                {club.category}
+                              </span>
+                              <h3 style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--text-title)", margin: "2px 0 0", lineHeight: "1.25" }}>
+                                {club.name}
+                              </h3>
+                            </div>
+                          </div>
+
+                          <span style={{
+                            fontSize: "0.64rem",
+                            fontWeight: "800",
+                            padding: "3px 8px",
+                            borderRadius: "10px",
+                            background: "rgba(59,130,246,0.12)",
+                            color: club.color,
+                            border: `1px solid ${club.color}33`,
+                            whiteSpace: "nowrap"
+                          }}>
+                            {club.badge}
+                          </span>
+                        </div>
+
+                        {/* Description */}
+                        <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: "1.55", marginBottom: "16px" }}>
+                          {club.desc}
+                        </p>
+
+                        {/* Schedule & Location Chips */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "16px", background: "var(--neu-surface-pressed)", padding: "10px 12px", borderRadius: "14px", border: "1px solid var(--border-subtle)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.74rem", color: "var(--text-body)" }}>
+                            <span style={{ fontSize: "0.85rem" }}>🕒</span>
+                            <strong>Schedule:</strong> <span>{club.meetingSchedule}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.74rem", color: "var(--text-body)" }}>
+                            <span style={{ fontSize: "0.85rem" }}>📍</span>
+                            <strong>Room:</strong> <span>{club.room}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.74rem", color: "var(--text-body)" }}>
+                            <span style={{ fontSize: "0.85rem" }}>👥</span>
+                            <strong>Active Roster:</strong> <span>{club.membersCount + (isJoined ? 1 : 0)} Enrolled Students</span>
+                          </div>
+                        </div>
+
+                        {/* Upcoming Event / Audition Callout */}
+                        <div style={{
+                          background: "linear-gradient(135deg, rgba(59,130,246,0.06), rgba(139,92,246,0.06))",
+                          border: "1px dashed rgba(59,130,246,0.3)",
+                          borderRadius: "12px",
+                          padding: "9px 12px",
+                          marginBottom: "16px"
+                        }}>
+                          <div style={{ fontSize: "0.68rem", fontWeight: "800", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <span>📅 Upcoming Activity</span>
+                            <span style={{ color: "var(--text-muted)", fontWeight: "500" }}>• {club.upcomingEvent.date}</span>
+                          </div>
+                          <div style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)" }}>
+                            {club.upcomingEvent.title}
+                          </div>
+                          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                            Venue: {club.upcomingEvent.venue}
+                          </div>
+                        </div>
+
+                        {/* President Contact Details */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "10px", borderTop: "1px solid var(--border-subtle)", marginBottom: "16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "10px",
+                              background: club.color,
+                              color: "white",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: "800",
+                              fontSize: "0.74rem"
+                            }}>
+                              {club.president.avatar}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "0.78rem", fontWeight: "800", color: "var(--text-title)" }}>
+                                {club.president.name}
+                              </div>
+                              <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                                President • {club.president.grade}
+                              </div>
+                            </div>
+                          </div>
+
+                          <a
+                            href={`mailto:${club.president.email}?subject=Inquiry regarding ${encodeURIComponent(club.name)}`}
+                            style={{
+                              fontSize: "0.72rem",
+                              fontWeight: "700",
+                              color: club.color,
+                              textDecoration: "none",
+                              padding: "4px 8px",
+                              borderRadius: "8px",
+                              background: "var(--neu-surface)",
+                              boxShadow: "var(--neu-shadow-small)"
+                            }}
+                            title={`Email President ${club.president.name}`}
+                          >
+                            ✉️ Contact
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Join Action Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedClubForJoin(club);
+                          setClubJoinSuccess(null);
+                          setClubJoinForm({
+                            studentName: sDone?.fullName || sForm.fullName || "",
+                            studentEmail: sDone?.email || sForm.email || "",
+                            gradeSection: sDone?.gradeLevel ? `${sDone.gradeLevel} - ${sDone.section || ""}` : (sForm.gradeLevel ? `${sForm.gradeLevel} - ${sForm.section || ""}` : ""),
+                            experience: "",
+                            statement: ""
+                          });
+                        }}
+                        style={{
+                          ...minBtnStyle,
+                          width: "100%",
+                          padding: "10px 16px",
+                          fontSize: "0.84rem",
+                          fontWeight: "800",
+                          background: isJoined
+                            ? "linear-gradient(135deg, #10b981, #059669)"
+                            : (isStudent ? accentGrad : "var(--neu-surface)"),
+                          color: isJoined ? "white" : (isStudent ? "white" : "var(--text-title)"),
+                          boxShadow: isJoined
+                            ? "0 4px 12px rgba(16,185,129,0.3)"
+                            : `3px 3px 8px ${accentColor}33`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {isJoined ? (
+                          <>
+                            <IconCheck size={16} /> Member Enrolled
+                          </>
+                        ) : (
+                          <>
+                            <IconSparkles size={15} /> One-Click Join Club
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </section>
+      </ScrollReveal>
+
       {/* ===== TESTIMONIALS ===== */}
       <ScrollReveal delay={0.1}>
         <section id="testimonials" style={{ padding: "30px 1rem 50px", maxWidth: "1200px", margin: "0 auto" }}>
@@ -3648,6 +4172,292 @@ export default function Home() {
                       }}
                     >
                       {counselorSubmitting ? "Encrypting..." : "Submit Confidential Report"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Feature 4: One-Click Join Club Registration Modal */}
+      {selectedClubForJoin && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15,23,42,0.72)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 99999,
+          padding: "20px"
+        }}>
+          <div style={{
+            background: "var(--neu-card)",
+            borderRadius: "24px",
+            boxShadow: "var(--neu-shadow-float)",
+            border: "1px solid var(--border-card)",
+            padding: "30px",
+            maxWidth: "540px",
+            width: "100%",
+            position: "relative",
+            maxHeight: "90vh",
+            overflowY: "auto"
+          }}>
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => { setSelectedClubForJoin(null); setClubJoinSuccess(null); }}
+              style={{
+                position: "absolute",
+                top: "18px",
+                right: "18px",
+                background: "var(--neu-surface)",
+                border: "none",
+                borderRadius: "50%",
+                width: "32px",
+                height: "32px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: "var(--text-muted)",
+                boxShadow: "var(--neu-shadow-small)"
+              }}
+              aria-label="Close Join Club Modal"
+            >
+              <IconClose size={16} />
+            </button>
+
+            {clubJoinSuccess ? (
+              <div style={{ textAlign: "center", padding: "16px 8px" }}>
+                <div style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                  color: "white",
+                  fontSize: "1.8rem"
+                }}>
+                  ✓
+                </div>
+                <h3 style={{ fontSize: "1.35rem", fontWeight: "800", color: "var(--text-title)", marginBottom: "6px" }}>
+                  Membership Application Dispatched!
+                </h3>
+                <p style={{ fontSize: "0.86rem", color: "var(--text-muted)", marginBottom: "16px", lineHeight: "1.5" }}>
+                  Your one-click registration for <strong>{selectedClubForJoin.name}</strong> was submitted to President <strong>{selectedClubForJoin.president.name}</strong> and logged into the campus system.
+                </p>
+                <div style={{
+                  background: "var(--neu-surface-pressed)",
+                  borderRadius: "14px",
+                  padding: "14px",
+                  marginBottom: "20px",
+                  border: "1px solid var(--border-subtle)",
+                  textAlign: "left"
+                }}>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: "600" }}>REGISTRATION CONFIRMATION CODE</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "#3b82f6", marginTop: "2px" }}>
+                    {clubJoinSuccess}
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-body)", marginTop: "6px" }}>
+                    🕒 Meeting times: <strong>{selectedClubForJoin.meetingSchedule}</strong> ({selectedClubForJoin.room})
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedClubForJoin(null); setClubJoinSuccess(null); }}
+                  style={{
+                    ...minBtnStyle,
+                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    color: "white",
+                    padding: "10px 26px",
+                    fontWeight: "800"
+                  }}
+                >
+                  Return to Guilds
+                </button>
+              </div>
+            ) : (
+              <div>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                  <div style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "12px",
+                    background: selectedClubForJoin.color,
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.5rem",
+                    flexShrink: 0
+                  }}>
+                    {selectedClubForJoin.icon}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--text-title)", margin: 0 }}>
+                      Join {selectedClubForJoin.name}
+                    </h3>
+                    <p style={{ fontSize: "0.76rem", color: "var(--text-muted)", margin: "2px 0 0" }}>
+                      Led by {selectedClubForJoin.president.name} • Adviser: {selectedClubForJoin.adviser}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Form Fields */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div>
+                    <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                      Student Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Christian Paul D. Reyes"
+                      value={clubJoinForm.studentName}
+                      onChange={e => setClubJoinForm(p => ({ ...p, studentName: e.target.value }))}
+                      style={iStyle()}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "10px" }}>
+                    <div>
+                      <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                        Student School Email *
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="your.email@students.edusphere.edu"
+                        value={clubJoinForm.studentEmail}
+                        onChange={e => setClubJoinForm(p => ({ ...p, studentEmail: e.target.value }))}
+                        style={iStyle()}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                        Grade & Section *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Grade 11 - Einstein"
+                        value={clubJoinForm.gradeSection}
+                        onChange={e => setClubJoinForm(p => ({ ...p, gradeSection: e.target.value }))}
+                        style={iStyle()}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                      Prior Experience / Relevant Skills (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Arduino basics, junior debate speaker, public school choir"
+                      value={clubJoinForm.experience}
+                      onChange={e => setClubJoinForm(p => ({ ...p, experience: e.target.value }))}
+                      style={iStyle()}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-title)", display: "block", marginBottom: "4px" }}>
+                      Why do you want to join this club? *
+                    </label>
+                    <textarea
+                      placeholder="Tell the officers what you hope to learn and contribute to the guild..."
+                      rows={3}
+                      value={clubJoinForm.statement}
+                      onChange={e => setClubJoinForm(p => ({ ...p, statement: e.target.value }))}
+                      style={{ ...iStyle(), resize: "vertical" }}
+                    />
+                  </div>
+
+                  <div style={{
+                    background: "rgba(59,130,246,0.06)",
+                    border: "1px solid rgba(59,130,246,0.15)",
+                    borderRadius: "12px",
+                    padding: "10px 12px",
+                    fontSize: "0.74rem",
+                    color: "var(--text-muted)",
+                    lineHeight: "1.5"
+                  }}>
+                    ✨ <strong>Pass Integration:</strong> Upon submission, this club badge will be appended to your active student registration and digital clearance pass.
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedClubForJoin(null)}
+                      style={{
+                        ...minBtnStyle,
+                        background: "var(--neu-surface)",
+                        color: "var(--text-muted)",
+                        boxShadow: "var(--neu-shadow-small)"
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={clubJoinSubmitting}
+                      onClick={async () => {
+                        if (!clubJoinForm.studentName.trim() || !clubJoinForm.studentEmail.trim()) {
+                          alert("Please provide your name and student email.");
+                          return;
+                        }
+                        setClubJoinSubmitting(true);
+                        const regId = `REG-${(selectedClubForJoin?.id || "CLUB").toUpperCase().substring(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+                        try {
+                          await saveClubApplicationToFirebase({
+                            regId,
+                            clubId: selectedClubForJoin?.id || "general",
+                            clubName: selectedClubForJoin?.name || "Campus Club",
+                            ...clubJoinForm,
+                            timestamp: new Date().toISOString()
+                          });
+                        } catch (err) {
+                          console.warn("[Club Join] Application save warning:", err);
+                        }
+
+                        try {
+                          // Update joined clubs in local state & storage
+                          const currentJoined = Array.isArray(joinedClubIds) ? joinedClubIds : [];
+                          const updated = Array.from(new Set([...currentJoined, selectedClubForJoin?.id]));
+                          setJoinedClubIds(updated);
+                          localStorage.setItem("edusphere_joined_club_ids", JSON.stringify(updated));
+
+                          // If student is logged in, append to their interests
+                          if (sDone) {
+                            const updatedInterests = Array.from(new Set([...(sDone.interests || []), selectedClubForJoin?.name]));
+                            const updatedStudent = { ...sDone, interests: updatedInterests };
+                            setSDone(updatedStudent);
+                            localStorage.setItem("current_student", JSON.stringify(updatedStudent));
+                          }
+                        } catch (e) {
+                          console.warn("[Club Join] Local storage update warning:", e);
+                        } finally {
+                          setClubJoinSubmitting(false);
+                          setClubJoinSuccess(regId);
+                        }
+                      }}
+                      style={{
+                        ...minBtnStyle,
+                        background: selectedClubForJoin.color ? `linear-gradient(135deg, ${selectedClubForJoin.color}, #1d4ed8)` : accentGrad,
+                        color: "white",
+                        boxShadow: "3px 3px 10px rgba(59,130,246,0.35)",
+                        padding: "10px 22px",
+                        fontWeight: "800"
+                      }}
+                    >
+                      {clubJoinSubmitting ? "Submitting..." : "Submit One-Click Application"}
                     </button>
                   </div>
                 </div>

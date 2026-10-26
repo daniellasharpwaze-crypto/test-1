@@ -399,3 +399,38 @@ export async function saveCounselorReportToFirebase(report: any): Promise<void> 
     }
   }
 }
+
+/* ============================================================
+   Student Organizations & Club Application Dispatch
+   ============================================================ */
+
+export async function saveClubApplicationToFirebase(appData: any): Promise<void> {
+  const docId = appData.regId || appData.id || `club_${Date.now()}`;
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = JSON.parse(localStorage.getItem("edusphere_club_applications") || "[]");
+      stored.unshift({ ...appData, id: docId, createdAt: new Date().toISOString() });
+      localStorage.setItem("edusphere_club_applications", JSON.stringify(stored.slice(0, 50)));
+    } catch (e) {
+      console.warn("[Local] Error saving club application locally:", e);
+    }
+  }
+
+  if (db && isFirebaseConfigured()) {
+    try {
+      const clubDoc = doc(db, "club_applications", docId);
+      // Non-blocking timeout so remote network delays or offline states never freeze the UI
+      const savePromise = setDoc(clubDoc, {
+        ...appData,
+        createdAt: serverTimestamp()
+      });
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
+      await Promise.race([savePromise, timeoutPromise]);
+    } catch (err) {
+      console.warn("[Firebase] Could not save club application to Firestore:", err);
+    }
+  }
+}
+
+
