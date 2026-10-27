@@ -280,16 +280,20 @@ html.dark .neo-pill {
   /* Hero: single column */
   .hero-grid {
     grid-template-columns: 1fr !important;
-    gap: 32px !important;
+    gap: 24px !important;
   }
 
   .hero-card {
-    display: none !important;
+    display: block !important;
+    width: 100% !important;
+    padding: 16px !important;
+    border-radius: 18px !important;
   }
 
   .hero-h1 {
-    font-size: 2rem !important;
+    font-size: 1.85rem !important;
     letter-spacing: -0.5px !important;
+    line-height: 1.2 !important;
   }
 
   .hero-actions {
@@ -584,13 +588,6 @@ html.dark ::-webkit-scrollbar-thumb {
     white-space: nowrap !important;
   }
 
-  /* When screen is very narrow (< 520px), hide Campus Navigation button from top bar since it's already inside hamburger drawer */
-  @media (max-width: 520px) {
-    .nav-campus-btn-wrapper {
-      display: none !important;
-    }
-  }
-
   /* Navigation button label on small screens */
   .nav-btn-text-full {
     display: none !important;
@@ -662,5 +659,71 @@ html.dark ::-webkit-scrollbar-thumb {
   }
   .faculty-input-label-mobile {
     display: none !important;
+  }
+}
+
+/* ============================================================
+   SMARTPHONE & NARROW SCREEN OPTIMIZATIONS (<= 540px)
+   ============================================================ */
+@media (max-width: 540px) {
+  /* Hide top-bar campus nav button since it is directly in the hamburger menu drawer */
+  .nav-campus-btn-wrapper {
+    display: none !important;
+  }
+
+  /* Compact top navbar padding */
+  nav > div {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .nav-brand-text {
+    font-size: 0.98rem !important;
+  }
+
+  .nav-actions-wrap {
+    gap: 4px !important;
+  }
+
+  .nav-portal-btn {
+    padding: 6px 8px !important;
+    font-size: 0.74rem !important;
+  }
+
+  /* Stats grid: 2 columns on mobile */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    padding: 16px 12px !important;
+  }
+
+  /* Registration cards & forms adapt cleanly to mobile width */
+  .form-container {
+    padding: 20px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .reg-h2 {
+    font-size: 1.5rem !important;
+  }
+
+  /* Inputs and buttons fill width naturally */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents iOS auto-zoom on input focus */
+  }
+
+  /* Modal popups adapt to screen width */
+  .role-modal-container {
+    padding: 16px 14px !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-brand-text {
+    display: none !important;
+  }
+  .hero-h1 {
+    font-size: 1.6rem !important;
   }
 }
