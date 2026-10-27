@@ -1800,15 +1800,8 @@ export default function Home() {
 
                   {/* Campus Clubs & Student Orgs */}
                   <a
-                    href="/#clubs"
-                    onClick={(e) => {
-                      setNavMenuOpen(false);
-                      const el = document.getElementById("clubs");
-                      if (el) {
-                        e.preventDefault();
-                        el.scrollIntoView({ behavior: "smooth" });
-                      }
-                    }}
+                    href="/campus-guild"
+                    onClick={() => setNavMenuOpen(false)}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -1970,7 +1963,7 @@ export default function Home() {
           {[
             { label: "Academic Modules", href: "#modules" },
             { label: "Campus Safety", href: "#safety" },
-            { label: "Clubs & Guilds", href: "#clubs" },
+            { label: "Clubs & Guilds", href: "/campus-guild" },
             { label: "School Community", href: "#testimonials" }
           ].map(item => (
             <a key={item.label} href={item.href} onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "320px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: "var(--text-title)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)" }}>
