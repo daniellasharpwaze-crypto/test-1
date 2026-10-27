@@ -530,3 +530,137 @@ html.dark ::-webkit-scrollbar-track {
 html.dark ::-webkit-scrollbar-thumb {
   background: linear-gradient(135deg, #3b82f6, #8b5cf6);
 }
+
+/* ============================================================
+   CAMPUS NAVIGATION & FACULTY PORTAL MOBILE OPTIMIZATIONS
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Campus Navigation Dropdown popup responsive adjustments */
+  .campus-nav-popup {
+    position: fixed !important;
+    top: 66px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 80px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 20px !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4) !important;
+    padding: 14px !important;
+  }
+
+  /* Academic Notifications dropdown popup */
+  .notif-dropdown-popup {
+    position: fixed !important;
+    top: 66px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 80px) !important;
+    overflow-y: auto !important;
+    border-radius: 20px !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Navigation bar compact sizing on mobile */
+  .nav-actions-wrap {
+    gap: 6px !important;
+  }
+  .nav-actions-wrap button {
+    padding: 6px 9px !important;
+    font-size: 0.78rem !important;
+  }
+  .nav-portal-btn {
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+  }
+  .nav-campus-btn {
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+  }
+
+  /* When screen is very narrow (< 520px), hide Campus Navigation button from top bar since it's already inside hamburger drawer */
+  @media (max-width: 520px) {
+    .nav-campus-btn-wrapper {
+      display: none !important;
+    }
+  }
+
+  /* Navigation button label on small screens */
+  .nav-btn-text-full {
+    display: none !important;
+  }
+  .nav-btn-text-short {
+    display: inline !important;
+  }
+
+  /* Faculty Grade Manager page */
+  .faculty-grades-container {
+    padding: 18px 12px !important;
+  }
+  .faculty-grades-card {
+    padding: 20px 14px !important;
+    border-radius: 20px !important;
+  }
+  .faculty-grades-title {
+    font-size: 1.4rem !important;
+  }
+  .faculty-filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .faculty-filter-select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Faculty Roster Table Mobile Card View */
+  .faculty-roster-header {
+    display: none !important;
+  }
+  .faculty-roster-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+    background: var(--neu-surface) !important;
+    box-shadow: var(--neu-shadow-small) !important;
+    border: 1px solid var(--border-subtle) !important;
+  }
+  .faculty-roster-row-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+  .faculty-inputs-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .faculty-input-group label {
+    display: block !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    margin-bottom: 3px !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .nav-mobile-btn {
+    display: none !important;
+  }
+  .nav-btn-text-short {
+    display: none !important;
+  }
+  .faculty-input-label-mobile {
+    display: none !important;
+  }
+}

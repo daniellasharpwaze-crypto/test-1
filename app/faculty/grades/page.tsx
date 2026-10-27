@@ -350,17 +350,17 @@ export default function FacultyGradesPage() {
   };
 
   return (
-    <div style={{ background: "var(--neu-bg)", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Outfit',sans-serif", color: "var(--text-body)", transition: "background 0.3s ease, color 0.3s ease" }}>
+    <div className="faculty-grades-container" style={{ background: "var(--neu-bg)", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Outfit',sans-serif", color: "var(--text-body)", transition: "background 0.3s ease, color 0.3s ease" }}>
       <div style={{ maxWidth: "860px", margin: "0 auto" }}>
         
         <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "var(--text-muted)", fontWeight: "700", fontSize: "0.9rem", marginBottom: "30px", padding: "8px 16px", borderRadius: "20px", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", border: "1px solid var(--border-subtle)" }}>
           <IconArrowLeft /> Back to Dashboard
         </Link>
 
-        <div style={{ background: "var(--neu-card)", borderRadius: "24px", boxShadow: "var(--neu-shadow-float)", border: "1px solid var(--border-card)", padding: "32px" }}>
+        <div className="faculty-grades-card" style={{ background: "var(--neu-card)", borderRadius: "24px", boxShadow: "var(--neu-shadow-float)", border: "1px solid var(--border-card)", padding: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "8px" }}>
             <div>
-              <h1 style={{ fontSize: "2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 6px" }}>Faculty Grade & Attendance Manager</h1>
+              <h1 className="faculty-grades-title" style={{ fontSize: "2rem", fontWeight: "800", color: "var(--text-title)", margin: "0 0 6px" }}>Faculty Grade & Attendance Manager</h1>
               <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", margin: 0, lineHeight: "1.6" }}>
                 Enter accurate final grades and verified attendance rates. Dispatching immediately notifies enrolled students and updates campus analytics.
               </p>
@@ -391,13 +391,14 @@ export default function FacultyGradesPage() {
           </div>
 
           {/* Course Filter Bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "24px 0 20px" }}>
+          <div className="faculty-filter-bar" style={{ display: "flex", alignItems: "center", gap: "12px", margin: "24px 0 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#8b5cf6", fontWeight: "700" }}>
               <IconFilter /> Filter by Course:
             </div>
             <select 
               value={courseFilter} 
               onChange={e => setCourseFilter(e.target.value)}
+              className="faculty-filter-select"
               style={{ ...iStyle, width: "auto", minWidth: "240px", cursor: "pointer", fontWeight: "600" }}
             >
               <option value="Advanced Mathematics">Advanced Mathematics</option>
@@ -407,8 +408,8 @@ export default function FacultyGradesPage() {
           </div>
 
           {/* Roster Table */}
-          <div style={{ background: "var(--neu-surface-pressed)", borderRadius: "16px", boxShadow: "var(--neu-shadow-pressed)", border: "1px solid var(--border-subtle)", padding: "20px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px", marginBottom: "12px", fontWeight: "800", color: "var(--text-title)", fontSize: "0.82rem" }}>
+          <div style={{ background: "var(--neu-surface-pressed)", borderRadius: "16px", boxShadow: "var(--neu-shadow-pressed)", border: "1px solid var(--border-subtle)", padding: "16px" }}>
+            <div className="faculty-roster-header" style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px", marginBottom: "12px", fontWeight: "800", color: "var(--text-title)", fontSize: "0.82rem" }}>
               <div>Student ID</div>
               <div>Student Name</div>
               <div style={{ textAlign: "center" }}>Attendance Rate</div>
@@ -422,33 +423,53 @@ export default function FacultyGradesPage() {
                 const hasGrade = !!(grades[compoundKey] && grades[compoundKey].trim());
 
                 return (
-                  <div key={compoundKey} style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", alignItems: "center" }}>
-                    <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", fontWeight: "700" }}>{s.id}</div>
-                    <div style={{ fontSize: "0.88rem", fontWeight: "700", color: "var(--text-body)" }}>
-                      {s.name}
-                      {s.name.includes("Janelle") && (
-                        <span style={{ marginLeft: "6px", fontSize: "0.68rem", background: "rgba(59,130,246,0.12)", color: "#2563eb", padding: "2px 6px", borderRadius: "8px", fontWeight: "700" }}>Demo Account</span>
-                      )}
+                  <div key={compoundKey} className="faculty-roster-row" style={{ display: "grid", gridTemplateColumns: "1.1fr 1.8fr 1.2fr 1.1fr 0.9fr", gap: "10px", alignItems: "center" }}>
+                    <div className="faculty-roster-row-header">
+                      <div>
+                        <div style={{ fontSize: "0.88rem", fontWeight: "700", color: "var(--text-body)" }}>
+                          {s.name}
+                          {s.name.includes("Janelle") && (
+                            <span style={{ marginLeft: "6px", fontSize: "0.68rem", background: "rgba(59,130,246,0.12)", color: "#2563eb", padding: "2px 6px", borderRadius: "8px", fontWeight: "700" }}>Demo</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontWeight: "700", marginTop: "2px" }}>{s.id}</div>
+                      </div>
+                      <span className="faculty-input-label-mobile" style={{
+                        fontSize: "0.72rem",
+                        fontWeight: "700",
+                        padding: "3px 8px",
+                        borderRadius: "12px",
+                        background: hasGrade ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.15)",
+                        color: hasGrade ? "#059669" : "#64748b"
+                      }}>
+                        {hasGrade ? "Ready" : "Pending"}
+                      </span>
                     </div>
-                    <div>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. 98.4%" 
-                        value={attendance[compoundKey] ?? "98.4%"}
-                        onChange={e => handleAttendanceChange(s.id, s.course, e.target.value)}
-                        style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#0284c7" }}
-                      />
+
+                    <div className="faculty-inputs-grid">
+                      <div className="faculty-input-group">
+                        <label className="faculty-input-label-mobile">Attendance</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. 98.4%" 
+                          value={attendance[compoundKey] ?? "98.4%"}
+                          onChange={e => handleAttendanceChange(s.id, s.course, e.target.value)}
+                          style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#0284c7" }}
+                        />
+                      </div>
+                      <div className="faculty-input-group">
+                        <label className="faculty-input-label-mobile">Final Grade</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. 95 or A" 
+                          value={grades[compoundKey] || ""}
+                          onChange={e => handleGradeChange(s.id, s.course, e.target.value)}
+                          style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#10b981" }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. 95 or A" 
-                        value={grades[compoundKey] || ""}
-                        onChange={e => handleGradeChange(s.id, s.course, e.target.value)}
-                        style={{ ...iStyle, padding: "8px 12px", textAlign: "center", fontWeight: "700", color: "#10b981" }}
-                      />
-                    </div>
-                    <div style={{ textAlign: "center" }}>
+
+                    <div className="nav-links-desktop" style={{ textAlign: "center" }}>
                       <span style={{
                         fontSize: "0.72rem",
                         fontWeight: "700",

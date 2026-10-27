@@ -1448,18 +1448,45 @@ export default function Home() {
       <nav style={{ position: "sticky", top: 0, zIndex: 100, background: "var(--neu-nav)", backdropFilter: "blur(16px)", boxShadow: isDark ? "0 2px 14px rgba(0,0,0,0.5)" : "0 2px 14px rgba(163,177,198,0.35)", padding: "0 1rem", borderBottom: "1px solid var(--border-subtle)", transition: "background 0.3s ease" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "60px" }}>
 
-          {/* Brand */}
-          <a href="#" style={{ display: "flex", alignItems: "center", gap: "9px", textDecoration: "none" }}>
-            <div style={{ width: "34px", height: "34px", borderRadius: "10px", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: "var(--neu-shadow-small)", flexShrink: 0 }}>
-              <IconGraduationCap size={18} />
-            </div>
-            <div>
-              <span style={{ fontWeight: "800", fontSize: "1.1rem", color: "var(--text-title)", letterSpacing: "-0.4px" }}>Edu<span style={{ color: "#3b82f6" }}>Sphere</span></span>
-            </div>
-          </a>
+          {/* Left: Mobile Hamburger Toggle + Brand */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {/* Mobile Hamburger toggle (visible only on mobile via .nav-mobile-btn) */}
+            <button
+              type="button"
+              className="nav-mobile-btn"
+              onClick={() => setMobileOpen(o => !o)}
+              style={{
+                display: "none",
+                width: "36px",
+                height: "36px",
+                borderRadius: "10px",
+                border: "none",
+                cursor: "pointer",
+                background: "var(--neu-surface)",
+                boxShadow: "var(--neu-shadow-small)",
+                color: "var(--text-muted)",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}
+              aria-label="Toggle Menu"
+            >
+              {mobileOpen ? <IconClose size={18} /> : <IconMenu />}
+            </button>
+
+            {/* Brand */}
+            <a href="#" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none", flexShrink: 0 }}>
+              <div style={{ width: "32px", height: "32px", borderRadius: "10px", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: "var(--neu-shadow-small)", flexShrink: 0 }}>
+                <IconGraduationCap size={16} />
+              </div>
+              <div>
+                <span className="nav-brand-text" style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--text-title)", letterSpacing: "-0.4px" }}>Edu<span style={{ color: "#3b82f6" }}>Sphere</span></span>
+              </div>
+            </a>
+          </div>
 
           {/* Navbar Actions: Theme Toggle + Notification Bell + Portal Selector / Sign Out + Campus Navigation */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="nav-actions-wrap" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {/* Theme Toggle Button */}
             <button
               type="button"
@@ -1534,18 +1561,21 @@ export default function Home() {
 
               {/* Notification Dropdown Menu */}
               {notifBellOpen && (
-                <div style={{
-                  position: "absolute",
-                  top: "46px",
-                  right: 0,
-                  width: "320px",
-                  background: "var(--neu-surface)",
-                  borderRadius: "18px",
-                  boxShadow: "var(--neu-shadow-float)",
-                  padding: "16px",
-                  zIndex: 9999,
-                  textAlign: "left"
-                }}>
+                <div
+                  className="notif-dropdown-popup"
+                  style={{
+                    position: "absolute",
+                    top: "46px",
+                    right: 0,
+                    width: "320px",
+                    background: "var(--neu-surface)",
+                    borderRadius: "18px",
+                    boxShadow: "var(--neu-shadow-float)",
+                    padding: "16px",
+                    zIndex: 9999,
+                    textAlign: "left"
+                  }}
+                >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid rgba(163,177,198,0.3)", paddingBottom: "8px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "800", fontSize: "0.85rem", color: "var(--text-title)" }}>
                       <IconBell size={15} /> Academic Alerts
@@ -1612,13 +1642,14 @@ export default function Home() {
             {(isStudent ? sDone : fDone) ? (
               <button
                 type="button"
+                className="nav-portal-btn"
                 onClick={isStudent ? handleSignOut : handleFacultySignOut}
                 style={{
                   ...minBtnStyle,
                   background: "var(--neu-surface)",
                   color: "#ef4444",
                   boxShadow: "var(--neu-shadow-small)",
-                  padding: "8px 18px",
+                  padding: "8px 14px",
                   fontSize: "0.84rem",
                   fontWeight: "700"
                 }}
@@ -1629,34 +1660,37 @@ export default function Home() {
             ) : (
               <button
                 type="button"
+                className="nav-portal-btn"
                 onClick={() => setRolePopupOpen(true)}
                 style={{
                   ...minBtnStyle,
                   background: accentGrad,
                   color: "white",
                   boxShadow: `3px 3px 8px ${accentColor}44, -2px -2px 6px rgba(255,255,255,0.7)`,
-                  padding: "8px 16px",
+                  padding: "8px 12px",
                   fontSize: "0.84rem"
                 }}
                 title="Click to choose Student or Faculty Portal"
               >
                 {isStudent ? <IconGraduationCap size={16} /> : <IconTeacher size={16} />}
-                <span>{isStudent ? "Student Portal" : "Faculty Portal"}</span>
+                <span className="nav-btn-text-full">{isStudent ? "Student Portal" : "Faculty Portal"}</span>
+                <span className="nav-btn-text-short">{isStudent ? "Student" : "Faculty"}</span>
                 <IconChevronDown size={13} />
               </button>
             )}
 
-            {/* MINIMIZED CAMPUS NAVIGATION POPUP BUTTON (Placed on the right side of Student Portal) */}
-            <div ref={navMenuRef} style={{ position: "relative" }}>
+            {/* MINIMIZED CAMPUS NAVIGATION POPUP BUTTON */}
+            <div ref={navMenuRef} className="nav-campus-btn-wrapper" style={{ position: "relative" }}>
               <button
                 type="button"
+                className="nav-campus-btn"
                 onClick={() => setNavMenuOpen(prev => !prev)}
                 style={{
                   ...minBtnStyle,
                   background: accentGrad,
                   color: "white",
                   boxShadow: `3px 3px 8px ${accentColor}44, -2px -2px 6px rgba(255,255,255,0.7)`,
-                  padding: "8px 16px",
+                  padding: "8px 12px",
                   fontSize: "0.84rem",
                   fontWeight: "700",
                   display: "inline-flex",
@@ -1669,7 +1703,8 @@ export default function Home() {
                 aria-expanded={navMenuOpen}
               >
                 <IconMenu />
-                <span>Campus Navigation</span>
+                <span className="nav-btn-text-full">Campus Navigation</span>
+                <span className="nav-btn-text-short">Explore</span>
                 <span style={{ transform: navMenuOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s ease", display: "inline-flex", alignItems: "center" }}>
                   <IconChevronDown size={13} />
                 </span>
@@ -1678,6 +1713,7 @@ export default function Home() {
               {/* Dropdown Menu with all buttons */}
               {navMenuOpen && (
                 <div
+                  className="campus-nav-popup"
                   style={{
                     position: "absolute",
                     top: "48px",
@@ -1924,53 +1960,46 @@ export default function Home() {
                 </div>
               )}
             </div>
-
-            {/* Mobile Hamburger toggle */}
-            <button
-              type="button"
-              className="nav-mobile-btn"
-              onClick={() => setMobileOpen(o => !o)}
-              style={{
-                display: "none",
-                width: "36px",
-                height: "36px",
-                borderRadius: "10px",
-                border: "none",
-                cursor: "pointer",
-                background: "var(--neu-surface)",
-                boxShadow: "var(--neu-shadow-small)",
-                color: "var(--text-muted)",
-                alignItems: "center",
-                justifyContent: "center"
-              }}
-              aria-label="Toggle Menu"
-            >
-              {mobileOpen ? <IconClose size={18} /> : <IconMenu />}
-            </button>
           </div>
         </div>
       </nav>
 
       {/* Mobile Menu Drawer */}
       {mobileOpen && (
-        <div style={{ position: "fixed", inset: 0, top: "60px", zIndex: 99, background: "var(--neu-nav)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 20px", gap: "12px" }}>
+        <div style={{ position: "fixed", inset: 0, top: "60px", zIndex: 99, background: "var(--neu-nav)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 20px", gap: "10px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
           {[
             { label: "Academic Modules", href: "#modules" },
             { label: "Campus Safety", href: "#safety" },
             { label: "Clubs & Guilds", href: "#clubs" },
             { label: "School Community", href: "#testimonials" }
           ].map(item => (
-            <a key={item.label} href={item.href} onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "280px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: "var(--text-title)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)" }}>
+            <a key={item.label} href={item.href} onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "320px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: "var(--text-title)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)" }}>
               {item.label}
             </a>
           ))}
-          <a href="/feedback" onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "280px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: isStudent ? "#3b82f6" : "var(--text-muted)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+          <a href="/feedback" onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "320px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: isStudent ? "#3b82f6" : "var(--text-muted)", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
             <span>Feedback</span>
             <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "8px", background: isStudent ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.15)", color: isStudent ? "#3b82f6" : "var(--text-muted)" }}>
               {isStudent ? "Unlocked" : "Students Only"}
             </span>
           </a>
-          <div style={{ marginTop: "12px", width: "100%", maxWidth: "280px" }}>
+          <a href="/faculty/grades" onClick={() => setMobileOpen(false)} style={{ width: "100%", maxWidth: "320px", textAlign: "center", padding: "12px", borderRadius: "14px", textDecoration: "none", color: "#10b981", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            <span>📊</span>
+            <span>Faculty Gradebook</span>
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileOpen(false);
+              setCounselorSubmittedTicket(null);
+              setCounselorOpen(true);
+            }}
+            style={{ width: "100%", maxWidth: "320px", textAlign: "center", padding: "12px", borderRadius: "14px", border: "none", cursor: "pointer", color: "#ef4444", fontWeight: "700", fontSize: "0.92rem", background: "var(--neu-surface)", boxShadow: "var(--neu-shadow-small)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+          >
+            <span>🛡️</span>
+            <span>Counselor Box</span>
+          </button>
+          <div style={{ marginTop: "12px", width: "100%", maxWidth: "320px" }}>
             {(isStudent ? sDone : fDone) ? (
               <button
                 type="button"
